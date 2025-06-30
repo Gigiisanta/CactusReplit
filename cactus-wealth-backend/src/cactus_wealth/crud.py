@@ -532,6 +532,15 @@ def get_or_create_asset_from_yfinance(session: Session, ticker: str) -> Optional
         elif info.get('quoteType') == 'BOND':
             asset_type = AssetType.BOND
         
+        # Smart sector handling for ETFs and other assets
+        if not sector:
+            if asset_type == AssetType.ETF:
+                sector = "ETF Diversificado"
+            elif info.get('quoteType') == 'ETF':
+                sector = "ETF Diversificado"
+            else:
+                sector = "Otro"
+        
         # Create new asset
         new_asset = Asset(
             ticker_symbol=ticker.upper(),
