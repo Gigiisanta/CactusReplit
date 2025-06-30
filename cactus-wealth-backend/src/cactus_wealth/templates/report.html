@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reporte de Cartera - {{ portfolio_name }}</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Header Section -->
+    <div class="header">
+        <div class="company-logo">🌵 CACTUS WEALTH</div>
+        <div class="report-title">Reporte de Valoración de Cartera</div>
+        <div class="report-date">Generado el {{ report_date.strftime('%d de %B de %Y a las %H:%M') }}</div>
+    </div>
+
+    <!-- Portfolio Info Section -->
+    <div class="portfolio-info">
+        <div class="portfolio-name">{{ portfolio_name }}</div>
+        <div style="font-size: 12px; color: #666;">
+            ID de Cartera: {{ portfolio_id }} | 
+            Última actualización: {{ last_updated.strftime('%d/%m/%Y %H:%M') }}
+        </div>
+    </div>
+
+    <!-- Summary Section -->
+    <div class="summary-section">
+        <div class="section-title">📊 Resumen Ejecutivo</div>
+        
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Valor Total de Mercado</div>
+                <div class="kpi-value">${{ "{:,.2f}".format(total_value) }}</div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-label">Costo Base Total</div>
+                <div class="kpi-value">${{ "{:,.2f}".format(total_cost_basis) }}</div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-label">Ganancia/Pérdida</div>
+                <div class="kpi-value {{ 'positive' if total_pnl >= 0 else 'negative' }}">
+                    ${{ "{:,.2f}".format(total_pnl) }}
+                </div>
+            </div>
+            
+            <div class="kpi-card">
+                <div class="kpi-label">Rendimiento (%)</div>
+                <div class="kpi-value {{ 'positive' if total_pnl_percentage >= 0 else 'negative' }}">
+                    {{ "{:+.2f}".format(total_pnl_percentage) }}%
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 15px; font-size: 12px; color: #666;">
+            Total de posiciones: {{ positions_count }}
+        </div>
+    </div>
+
+    <!-- Positions Detail Section -->
+    <div class="positions-section">
+        <div class="section-title">📈 Detalle de Posiciones</div>
+        
+        {% if positions and positions|length > 0 %}
+        <table class="positions-table">
+            <thead>
+                <tr>
+                    <th>Ticker</th>
+                    <th>Nombre del Activo</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Precio Compra</th>
+                    <th>Precio Actual</th>
+                    <th>Valor Mercado</th>
+                    <th>G/P</th>
+                    <th>G/P %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for position in positions %}
+                {% set market_value = position.quantity * position.current_price %}
+                {% set cost_basis = position.quantity * position.purchase_price %}
+                {% set pnl = market_value - cost_basis %}
+                {% set pnl_pct = (pnl / cost_basis * 100) if cost_basis > 0 else 0 %}
+                <tr>
+                    <td style="font-weight: bold;">{{ position.asset.ticker_symbol }}</td>
+                    <td>{{ position.asset.name }}</td>
+                    <td>{{ position.asset.asset_type.value }}</td>
+                    <td class="currency">{{ "{:,.0f}".format(position.quantity) }}</td>
+                    <td class="currency">${{ "{:,.2f}".format(position.purchase_price) }}</td>
+                    <td class="currency">${{ "{:,.2f}".format(position.current_price) }}</td>
+                    <td class="currency">${{ "{:,.2f}".format(market_value) }}</td>
+                    <td class="currency {{ 'positive' if pnl >= 0 else 'negative' }}">
+                        ${{ "{:,.2f}".format(pnl) }}
+                    </td>
+                    <td class="percentage {{ 'positive' if pnl_pct >= 0 else 'negative' }}">
+                        {{ "{:+.2f}".format(pnl_pct) }}%
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align: center; padding: 40px; color: #666; font-style: italic;">
+            Esta cartera no tiene posiciones actualmente.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Footer Section -->
+    <div class="footer">
+        <div>
+            <strong>Cactus Wealth Dashboard</strong><br>
+            Plataforma de Gestión Financiera para Asesores
+        </div>
+        
+        <div class="disclaimer">
+            <strong>AVISO LEGAL:</strong> Este reporte es confidencial y está destinado únicamente para el uso del cliente designado.
+            Los precios mostrados son indicativos y pueden diferir de los precios reales de mercado.
+            Las inversiones conllevan riesgos y el valor de las inversiones puede fluctuar.
+            Rendimientos pasados no garantizan resultados futuros.
+        </div>
+    </div>
+</body>
+</html> 
