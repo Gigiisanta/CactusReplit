@@ -265,9 +265,9 @@ class ApiClient {
     );
   }
 
-  // Model Portfolio methods
+  // Model Portfolio methods (using interceptor for automatic auth)
   async getModelPortfolios(): Promise<any[]> {
-    return this.request<any[]>('/model-portfolios/');
+    return apiClientInterceptor.get<any[]>('/model-portfolios/');
   }
 
   async createModelPortfolio(portfolio: {
@@ -275,10 +275,7 @@ class ApiClient {
     description?: string;
     risk_profile: 'LOW' | 'MEDIUM' | 'HIGH';
   }): Promise<any> {
-    return this.request<any>('/model-portfolios/', {
-      method: 'POST',
-      body: JSON.stringify(portfolio),
-    });
+    return apiClientInterceptor.post<any>('/model-portfolios/', portfolio);
   }
 
   async updateModelPortfolio(
@@ -289,31 +286,26 @@ class ApiClient {
       risk_profile?: 'LOW' | 'MEDIUM' | 'HIGH';
     }
   ): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}`, {
-      method: 'PUT',
-      body: JSON.stringify(portfolio),
-    });
+    return apiClientInterceptor.put<any>(`/model-portfolios/${portfolioId}`, portfolio);
   }
 
   async deleteModelPortfolio(portfolioId: number): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}`, {
-      method: 'DELETE',
-    });
+    return apiClientInterceptor.delete<any>(`/model-portfolios/${portfolioId}`);
   }
 
   // Get specific model portfolio with positions
   async getModelPortfolio(portfolioId: number): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}`);
+    return apiClientInterceptor.get<any>(`/model-portfolios/${portfolioId}`);
   }
 
-  // Asset search methods
+  // Asset search methods (using interceptor for automatic auth)
   async searchAssets(query: string, limit: number = 10): Promise<any[]> {
-    return this.request<any[]>(
+    return apiClientInterceptor.get<any[]>(
       `/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`
     );
   }
 
-  // Model Portfolio Position methods
+  // Model Portfolio Position methods (using interceptor for automatic auth)
   async addModelPortfolioPosition(
     portfolioId: number,
     position: {
@@ -321,10 +313,7 @@ class ApiClient {
       weight: number;
     }
   ): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}/positions`, {
-      method: 'POST',
-      body: JSON.stringify(position),
-    });
+    return apiClientInterceptor.post<any>(`/model-portfolios/${portfolioId}/positions`, position);
   }
 
   async updateModelPortfolioPosition(
@@ -334,12 +323,9 @@ class ApiClient {
       weight?: number;
     }
   ): Promise<any> {
-    return this.request<any>(
+    return apiClientInterceptor.put<any>(
       `/model-portfolios/${portfolioId}/positions/${positionId}`,
-      {
-        method: 'PUT',
-        body: JSON.stringify(position),
-      }
+      position
     );
   }
 
@@ -347,15 +333,12 @@ class ApiClient {
     portfolioId: number,
     positionId: number
   ): Promise<any> {
-    return this.request<any>(
-      `/model-portfolios/${portfolioId}/positions/${positionId}`,
-      {
-        method: 'DELETE',
-      }
+    return apiClientInterceptor.delete<any>(
+      `/model-portfolios/${portfolioId}/positions/${positionId}`
     );
   }
 
-  // Portfolio Backtesting methods
+  // Portfolio Backtesting methods (using interceptor for automatic auth)
   async backtestPortfolio(request: {
     composition: Array<{
       ticker: string;
@@ -382,10 +365,7 @@ class ApiClient {
     }>;
     performance_metrics: Record<string, number>;
   }> {
-    return this.request(`/portfolios/backtest`, {
-      method: 'POST',
-      body: JSON.stringify(request),
-    });
+    return apiClientInterceptor.post(`/portfolios/backtest`, request);
   }
 }
 

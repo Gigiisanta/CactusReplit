@@ -1,0 +1,24 @@
+{
+  "name": "cactusdashboard",
+  "version": "1.0.0",
+  "description": "Cactus Wealth Management Platform",
+  "main": "index.js",
+  "scripts": {
+    "prepare": "husky",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint-staged": "lint-staged"
+  },
+  "keywords": ["fintech", "wealth-management", "investment"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "lint-staged": {
+    "cactus-wealth-frontend/**/*.{js,jsx,ts,tsx,json,md,yml,yaml}": [
+      "cd cactus-wealth-frontend && npx prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.2"
+  }
+}

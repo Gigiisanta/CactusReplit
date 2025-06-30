@@ -1,13 +1,17 @@
-FROM python:3.12-slim
+# ================================
+# 🚀 MULTI-STAGE BUILD OPTIMIZATION
+# ================================
 
-# Set environment variables
+# Stage 1: Builder - Full environment for building dependencies
+FROM python:3.12-slim AS builder
+
+# Set environment variables for build stage
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
-# NOTE: WeasyPrint requires system libraries like pango, cairo, and gdk-pixbuf for PDF generation
+# Install build dependencies and system libraries needed for WeasyPrint
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
@@ -23,53 +27,74 @@ RUN apt-get update && apt-get install -y \
 # Install Poetry
 RUN pip install poetry
 
-# Configure Poetry to create venv in project
+# Configure Poetry
 ENV POETRY_NO_INTERACTION=1 \
     POETRY_VENV_IN_PROJECT=1 \
     POETRY_CACHE_DIR=/tmp/poetry_cache
 
-# Set work directory
 WORKDIR /app
 
-# 🚀 OPTIMIZATION: Copy dependency files first for maximum caching efficiency
-# This layer will only be rebuilt when dependencies change, not when source code changes
+# Copy dependency files first for optimal caching
 COPY pyproject.toml poetry.lock* ./
 
-# 🚀 OPTIMIZATION: Install dependencies in a separate layer for optimal caching
-# This is the expensive operation that we want to cache
-RUN poetry install --only main && rm -rf $POETRY_CACHE_DIR
+# Install ALL dependencies (including dev) for building
+RUN poetry install && rm -rf $POETRY_CACHE_DIR
 
-# 🚀 OPTIMIZATION: Copy entrypoint script after dependencies for better caching
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
-# 🚀 OPTIMIZATION: Copy source code LAST to maximize cache hits
-# Source code changes frequently, but dependencies change less often
+# Copy source code
 COPY . .
 
-# Create startup script that handles full installation, migration, and server startup
-RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "Starting FastAPI server with intelligent migrations..."\n\
-exec poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload' > /usr/local/bin/start-server.sh && \
+# ================================
+# Stage 2: Runtime - Minimal production image
+# ================================
+
+FROM python:3.12-slim AS runtime
+
+# Runtime environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH="/app/.venv/bin:$PATH"
+
+# Install ONLY runtime system dependencies (minimal set)
+RUN apt-get update && apt-get install -y \
+    curl \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libfontconfig1 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+WORKDIR /app
+
+# Copy ONLY the virtual environment from builder
+COPY --from=builder /app/.venv /app/.venv
+
+# Copy ONLY the application source code (no build tools, no cache)
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/main.py ./
+COPY --from=builder /app/entrypoint.sh ./
+COPY --from=builder /app/pyproject.toml ./
+
+# Make entrypoint executable
+RUN chmod +x entrypoint.sh
+
+# Create optimized startup scripts
+RUN echo '#!/bin/bash\nset -e\necho "Starting FastAPI server..."\nexec python -m uvicorn main:app --host 0.0.0.0 --port 8000' > /usr/local/bin/start-server.sh && \
     chmod +x /usr/local/bin/start-server.sh
 
-# Create ARQ worker startup script
-RUN echo '#!/bin/bash\n\
-set -e\n\
-echo "Starting ARQ worker with intelligent setup..."\n\
-exec poetry run arq src.cactus_wealth.worker.WorkerSettings' > /usr/local/bin/start-worker.sh && \
+RUN echo '#!/bin/bash\nset -e\necho "Starting ARQ worker..."\nexec python -m arq src.cactus_wealth.worker.WorkerSettings' > /usr/local/bin/start-worker.sh && \
     chmod +x /usr/local/bin/start-worker.sh
 
 # Expose port
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+# Optimized health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Set the intelligent entrypoint script
-ENTRYPOINT ["/app/entrypoint.sh"]
+# Set entrypoint
+ENTRYPOINT ["./entrypoint.sh"]
 
-# Default command - will be passed as argument to entrypoint
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"] 
+# Default command
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 

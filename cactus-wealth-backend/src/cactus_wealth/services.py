@@ -20,6 +20,15 @@ from cactus_wealth.models import Portfolio, Position, Asset, User, Client, UserR
 from cactus_wealth import schemas
 import cactus_wealth.crud as crud
 
+# 🚀 CLEAN ARCHITECTURE: Import repositories for clean data access
+from cactus_wealth.repositories import (
+    PortfolioRepository,
+    ClientRepository,
+    AssetRepository,
+    UserRepository,
+    NotificationRepository,
+)
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -31,23 +40,33 @@ logger = logging.getLogger(__name__)
 
 
 class PortfolioService:
-    """Service class for portfolio business logic."""
+    """
+    🚀 REFACTORED: Clean service class following Repository pattern.
+    
+    Service class for portfolio business logic with clean separation
+    between business logic and data access through repositories.
+    """
     
     def __init__(self, db_session: Session, market_data_provider: MarketDataProvider):
         """
-        Initialize the portfolio service.
+        Initialize the portfolio service with repositories.
         
         Args:
             db_session: Database session
             market_data_provider: Provider for market data
         """
-        self.db = db_session
+        # 🚀 CLEAN ARCHITECTURE: Use repositories instead of direct DB access
+        self.portfolio_repo = PortfolioRepository(db_session)
+        self.asset_repo = AssetRepository(db_session)
+        self.notification_repo = NotificationRepository(db_session)
+        self.client_repo = ClientRepository(db_session)
+        
         self.market_data_provider = market_data_provider
         self.notification_service = NotificationService(db_session)
     
     def get_portfolio_valuation(self, portfolio_id: int) -> schemas.PortfolioValuation:
         """
-        Calculate portfolio valuation with current market prices.
+        🚀 REFACTORED: Calculate portfolio valuation using clean repository pattern.
         
         Args:
             portfolio_id: ID of the portfolio to valuate
@@ -61,23 +80,14 @@ class PortfolioService:
         """
         logger.info(f"Starting valuation for portfolio {portfolio_id}")
         
-        # Get portfolio with positions and assets
-        statement = (
-            select(Portfolio)
-            .where(Portfolio.id == portfolio_id)
-        )
-        portfolio = self.db.exec(statement).first()
+        # 🚀 CLEAN: Use repository instead of direct DB queries
+        portfolio = self.portfolio_repo.get_with_positions(portfolio_id)
         
         if not portfolio:
             raise ValueError(f"Portfolio with ID {portfolio_id} not found")
         
-        # Get positions with assets
-        positions_statement = (
-            select(Position)
-            .join(Asset)
-            .where(Position.portfolio_id == portfolio_id)
-        )
-        positions = self.db.exec(positions_statement).all()
+        # 🚀 CLEAN: Get positions through repository
+        positions = self.portfolio_repo.get_positions_for_portfolio(portfolio_id)
         
         if not positions:
             logger.warning(f"Portfolio {portfolio_id} has no positions")
@@ -156,7 +166,7 @@ class PortfolioService:
 
     def create_snapshot_for_portfolio(self, portfolio_id: int) -> PortfolioSnapshot:
         """
-        Create a snapshot of the current portfolio value.
+        🚀 REFACTORED: Create portfolio snapshot using clean repository pattern.
         
         Args:
             portfolio_id: ID of the portfolio to snapshot
@@ -173,17 +183,12 @@ class PortfolioService:
             # Get current portfolio valuation
             valuation = self.get_portfolio_valuation(portfolio_id)
             
-            # Create snapshot
-            snapshot = PortfolioSnapshot(
+            # 🚀 CLEAN: Create snapshot through repository
+            snapshot = self.portfolio_repo.create_snapshot(
                 portfolio_id=portfolio_id,
                 value=Decimal(str(valuation.total_value)),
                 timestamp=datetime.utcnow()
             )
-            
-            # Save to database
-            self.db.add(snapshot)
-            self.db.commit()
-            self.db.refresh(snapshot)
             
             logger.info(
                 f"Snapshot created for portfolio {portfolio_id}: "
@@ -193,8 +198,8 @@ class PortfolioService:
             
             # Create notification for the portfolio owner
             try:
-                # Get portfolio to access client and owner information
-                portfolio = self.db.get(Portfolio, portfolio_id)
+                # 🚀 CLEAN: Get portfolio through repository
+                portfolio = self.portfolio_repo.get_by_id(portfolio_id)
                 if portfolio and portfolio.client:
                     owner_id = portfolio.client.owner_id
                     portfolio_name = valuation.portfolio_name

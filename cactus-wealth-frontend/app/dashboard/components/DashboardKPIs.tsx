@@ -12,7 +12,7 @@ import {
   TrendingUp,
   DollarSign,
 } from 'lucide-react';
-import { apiClient } from '@/lib/api';
+import { DashboardService } from '@/services';
 import { DashboardKPIsSkeleton } from './DashboardKPIs.Skeleton';
 
 interface DashboardData {
@@ -47,13 +47,15 @@ export default function DashboardKPIs() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    loadData();
   }, []);
 
-  const fetchDashboardData = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await apiClient.getDashboardSummary();
+      setError(null);
+
+      const data = await DashboardService.getDashboardSummary();
       setDashboardData(data);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);

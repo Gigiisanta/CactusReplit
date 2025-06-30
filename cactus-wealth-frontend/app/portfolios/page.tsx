@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PieChart, Plus, Trash2, Target } from 'lucide-react';
 import { toast } from 'sonner';
-import { apiClient } from '@/lib/api';
+import { PortfolioService } from '@/services';
 
 interface ModelPortfolio {
   id: number;
@@ -62,12 +62,13 @@ export default function PortfoliosPage() {
   });
 
   useEffect(() => {
-    fetchPortfolios();
+    loadPortfolios();
   }, []);
 
-  const fetchPortfolios = async () => {
+  const loadPortfolios = async () => {
     try {
-      const data = await apiClient.getModelPortfolios();
+      setLoading(true);
+      const data = await PortfolioService.getModelPortfolios();
       setPortfolios(data);
     } catch (error) {
       console.error('Error fetching portfolios:', error);
@@ -81,7 +82,11 @@ export default function PortfoliosPage() {
     e.preventDefault();
     
     try {
-      const newPortfolio = await apiClient.createModelPortfolio(formData);
+      // Import auth store dynamically to access current token
+      const { useAuthStore } = await import('@/stores/auth.store');
+      console.log('ACTION: Attempting to create model portfolio. Token from store:', useAuthStore.getState().token);
+      
+      const newPortfolio = await PortfolioService.createModelPortfolio(formData);
       setPortfolios([...portfolios, newPortfolio]);
       setIsCreateDialogOpen(false);
       setFormData({ name: '', description: '', risk_profile: 'LOW' });
@@ -98,7 +103,7 @@ export default function PortfoliosPage() {
     }
 
     try {
-      await apiClient.deleteModelPortfolio(portfolioId);
+      await PortfolioService.deleteModelPortfolio(portfolioId);
       setPortfolios(portfolios.filter(p => p.id !== portfolioId));
       toast.success('Cartera modelo eliminada exitosamente');
     } catch (error) {

@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🛡️  Guardián de Calidad Activado - Verificando código..."
+
+# Cambiar al directorio del frontend y ejecutar lint-staged
+cd cactus-wealth-frontend && npx lint-staged
+
+echo "✅ ¡Código verificado y corregido automáticamente!"

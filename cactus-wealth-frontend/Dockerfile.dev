@@ -1,15 +1,30 @@
-FROM node:20-alpine
+# ================================
+# 🚀 OPTIMIZED DEVELOPMENT BUILD
+# ================================
+
+# Stage 1: Dependencies installer
+FROM node:20-alpine AS deps
 
 WORKDIR /app
 
-# 🔥 OPTIMIZATION: Copy ONLY package files first for better caching
+# Copy ONLY package files for optimal caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies - This layer will be cached unless package*.json change
+# Install dependencies with npm ci for faster, more reliable builds
 RUN npm ci
 
-# 🔥 OPTIMIZATION: Copy source code AFTER installing dependencies
-# This ensures dependency installation cache won't be invalidated by code changes
+# ================================
+# Stage 2: Development runtime
+# ================================
+
+FROM node:20-alpine AS development
+
+WORKDIR /app
+
+# Copy dependencies from previous stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy application source
 COPY . .
 
 # Expose port

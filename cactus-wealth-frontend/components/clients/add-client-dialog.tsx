@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { apiClient } from '@/lib/api';
+import { ClientService } from '@/services';
 import { Client, ClientCreate, RiskProfile, ClientStatus, LeadSource } from '@/types';
 import { FinancialProductsSection } from './financial-products-section';
 
@@ -74,7 +74,7 @@ export function AddClientDialog({ onClientAdded, trigger }: AddClientDialogProps
 
     setIsLoading(true);
     try {
-      const newClientData = await apiClient.createClient(formData);
+      const newClientData = await ClientService.createClient(formData);
       
       // Save the newly created client and move to step 2
       setNewClient(newClientData);
