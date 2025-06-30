@@ -313,12 +313,12 @@ export default function AssetManagementPage() {
               {assetData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <RechartsPieChart>
-                    <Tooltip 
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value.toFixed(1)}%`,
-                        `${props.payload.ticker} - ${name}`
-                      ]}
-                    />
+                                         <Tooltip 
+                       formatter={(value: any, name: string, props: any) => [
+                         `${(Number(value) || 0).toFixed(1)}%`,
+                         `${props.payload.ticker} - ${name}`
+                       ]}
+                     />
                     <Legend />
                     <Pie
                       data={assetData}
@@ -326,7 +326,7 @@ export default function AssetManagementPage() {
                       cy="50%"
                       outerRadius={100}
                       dataKey="value"
-                      label={({ ticker, value }) => `${ticker}: ${value.toFixed(1)}%`}
+                      label={({ ticker, value }: any) => `${ticker}: ${(Number(value) || 0).toFixed(1)}%`}
                     >
                       {assetData.map((entry, index) => (
                         <Cell key={`asset-${index}`} fill={entry.color} />
@@ -353,12 +353,12 @@ export default function AssetManagementPage() {
               {sectorData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={300}>
                   <RechartsPieChart>
-                    <Tooltip 
-                      formatter={(value: number, name: string, props: any) => [
-                        `${value.toFixed(1)}%`,
-                        `${name} (${props.payload.assets.join(', ')})`
-                      ]}
-                    />
+                                         <Tooltip 
+                       formatter={(value: any, name: string, props: any) => [
+                         `${(Number(value) || 0).toFixed(1)}%`,
+                         `${name} (${props.payload.assets?.join(', ') || ''})`
+                       ]}
+                     />
                     <Legend />
                     <Pie
                       data={sectorData}
@@ -366,7 +366,7 @@ export default function AssetManagementPage() {
                       cy="50%"
                       outerRadius={100}
                       dataKey="value"
-                      label={({ name, value }) => `${name}: ${value.toFixed(1)}%`}
+                      label={({ name, value }: any) => `${name}: ${(Number(value) || 0).toFixed(1)}%`}
                     >
                       {sectorData.map((entry, index) => (
                         <Cell key={`sector-${index}`} fill={entry.color} />
