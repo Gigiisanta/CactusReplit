@@ -1,89 +1,54 @@
 # ================================
-# 🚀 MULTI-STAGE BUILD OPTIMIZATION
+# 🚀 ULTRA-OPTIMIZED MULTI-STAGE BUILD
 # ================================
 
-# Stage 1: Builder - Full environment for building dependencies
-FROM python:3.12-slim AS builder
-
-# Set environment variables for build stage
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
-
-# Install build dependencies and system libraries needed for WeasyPrint
-RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libfontconfig1 \
-    libcairo2 \
-    libgdk-pixbuf-2.0-0 \
-    libgtk-3-0 \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install Poetry
-RUN pip install poetry
-
-# Configure Poetry
-ENV POETRY_NO_INTERACTION=1 \
-    POETRY_VENV_IN_PROJECT=1 \
-    POETRY_CACHE_DIR=/tmp/poetry_cache
+# ---- Etapa Builder ----
+FROM python:3.12-slim as builder
 
 WORKDIR /app
 
-# Copy dependency files first for optimal caching
-COPY pyproject.toml poetry.lock* ./
+# Install Poetry with export plugin
+RUN pip install --no-cache-dir poetry poetry-plugin-export
 
-# Install ALL dependencies for building
-RUN poetry install && rm -rf $POETRY_CACHE_DIR
+# Copy only dependency files for optimal Docker caching
+COPY pyproject.toml poetry.lock ./
 
-# Copy source code
-COPY . .
+# Create a requirements.txt and install with pip for smaller image
+RUN poetry export -f requirements.txt --output requirements.txt --without-hashes --only=main && \
+    pip install --no-cache-dir --user -r requirements.txt
 
-# ================================
-# Stage 2: Runtime - Minimal production image
-# ================================
+# ---- Etapa Final ----
+FROM python:3.12-slim
 
-FROM python:3.12-slim AS runtime
+WORKDIR /app
 
-# Runtime environment variables
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    PATH="/app/.venv/bin:$PATH"
-
-# Install ONLY runtime system dependencies (minimal set)
+# Install ONLY essential runtime libraries for WeasyPrint
 RUN apt-get update && apt-get install -y \
     curl \
     libpango-1.0-0 \
-    libpangoft2-1.0-0 \
-    libfontconfig1 \
     libcairo2 \
     libgdk-pixbuf-2.0-0 \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
-WORKDIR /app
+# Copy the installed packages from builder
+COPY --from=builder /root/.local /root/.local
 
-# Copy ONLY the virtual environment from builder
-COPY --from=builder /app/.venv /app/.venv
+# Make sure scripts in .local are usable
+ENV PATH="/root/.local/bin:$PATH"
 
-# Copy ONLY the application source code (no build tools, no cache)
-COPY --from=builder /app/src ./src
-COPY --from=builder /app/main.py ./
-COPY --from=builder /app/entrypoint.sh ./
-COPY --from=builder /app/pyproject.toml ./
+# Copy ONLY the application source code
+COPY ./src ./src
+COPY ./main.py ./main.py
+COPY ./entrypoint.sh ./entrypoint.sh
+COPY ./alembic.ini ./alembic.ini
+COPY ./alembic ./alembic
 
 # Make entrypoint executable
 RUN chmod +x entrypoint.sh
 
-# Create optimized startup scripts
-RUN echo '#!/bin/bash\nset -e\necho "Starting FastAPI server..."\nexec python -m uvicorn main:app --host 0.0.0.0 --port 8000' > /usr/local/bin/start-server.sh && \
-    chmod +x /usr/local/bin/start-server.sh
-
-RUN echo '#!/bin/bash\nset -e\necho "Starting ARQ worker..."\nexec python -m arq src.cactus_wealth.worker.WorkerSettings' > /usr/local/bin/start-worker.sh && \
+# Create optimized worker startup script
+RUN echo '#!/bin/bash\nset -e\necho "🔥 Starting ARQ worker..."\nexec python -m arq src.cactus_wealth.worker.WorkerSettings' > /usr/local/bin/start-worker.sh && \
     chmod +x /usr/local/bin/start-worker.sh
 
 # Expose port
@@ -93,8 +58,6 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Set entrypoint
+# Set entrypoint and command
 ENTRYPOINT ["./entrypoint.sh"]
-
-# Default command
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"] 

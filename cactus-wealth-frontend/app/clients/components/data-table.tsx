@@ -135,7 +135,7 @@ export function DataTable<TData, TValue>({
         </div>
         {globalFilter && (
           <div>
-            Filtrado por: "{globalFilter}"
+            Filtrado por: &quot;{globalFilter}&quot;
           </div>
         )}
       </div>

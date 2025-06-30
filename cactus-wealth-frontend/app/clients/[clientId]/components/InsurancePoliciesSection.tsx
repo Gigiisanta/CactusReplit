@@ -121,7 +121,7 @@ export function InsurancePoliciesSection({ clientId, policies, onDataChange }: I
         {policies.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No hay pólizas de seguro registradas</p>
-            <p className="text-sm mt-1">Haz clic en "Añadir Póliza" para comenzar</p>
+            <p className="text-sm mt-1">Haz clic en &quot;Añadir Póliza&quot; para comenzar</p>
           </div>
         ) : (
           <Table>

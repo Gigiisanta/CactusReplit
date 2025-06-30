@@ -116,7 +116,7 @@ export function InvestmentAccountsSection({ clientId, accounts, onDataChange }: 
         {accounts.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground">
             <p>No hay cuentas de inversión registradas</p>
-            <p className="text-sm mt-1">Haz clic en "Añadir Cuenta" para comenzar</p>
+            <p className="text-sm mt-1">Haz clic en &quot;Añadir Cuenta&quot; para comenzar</p>
           </div>
         ) : (
           <Table>

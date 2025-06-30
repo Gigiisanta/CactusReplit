@@ -81,18 +81,15 @@ services:
   frontend:
     build:
       context: ./cactus-wealth-frontend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     container_name: cactus_frontend
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
-      - NODE_ENV=development
+      - NODE_ENV=production
       - NEXT_TELEMETRY_DISABLED=1
     ports:
       - "3000:3000"
-    volumes:
-      - ./cactus-wealth-frontend:/app:delegated
-      # ✅ REMOVED: frontend_node_modules volume to allow proper dependency sync
-      - frontend_next:/app/.next
+    # Production mode: no volumes needed, everything is in the image
     depends_on:
       - backend
     networks:
