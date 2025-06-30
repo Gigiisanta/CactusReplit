@@ -9,7 +9,7 @@ from cactus_wealth.security import get_current_user as get_current_active_user
 from cactus_wealth.core.dataprovider import YahooFinanceProvider
 from cactus_wealth.database import get_session
 from cactus_wealth.models import User, Portfolio, Client
-from cactus_wealth.services import PortfolioService, ReportService
+from cactus_wealth.services import PortfolioService, ReportService, PortfolioBacktestService
 from cactus_wealth import schemas
 
 logger = logging.getLogger(__name__)
@@ -178,4 +178,73 @@ def download_portfolio_report(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to generate portfolio report. Please try again later."
+        )
+
+
+@router.post("/backtest", response_model=schemas.BacktestResponse)
+async def backtest_portfolio(
+    request: schemas.BacktestRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)]
+) -> schemas.BacktestResponse:
+    """
+    Perform optimized portfolio backtesting with Redis caching and concurrency.
+    
+    This endpoint calculates historical performance of a given portfolio composition
+    against selected benchmarks using industry-standard financial formulas:
+    
+    FEATURES:
+    - Redis-based caching with 24h TTL for yfinance data
+    - Concurrent API calls for maximum performance
+    - Industry-standard metrics (CFA Institute formulas):
+      * Annualized Volatility: σ_daily × √252
+      * Sharpe Ratio: (R_p - R_f) / σ_p (using 2% risk-free rate)
+      * Max Drawdown: Peak-to-trough decline methodology
+    - 100% data integrity from yfinance (no mock data)
+    
+    PERFORMANCE:
+    - First call: Normal latency (network-bound)
+    - Subsequent calls: Near-instant (Redis cache hit)
+    - Concurrent ticker processing for optimal throughput
+    
+    Args:
+        request: BacktestRequest with portfolio composition, benchmarks, and period
+        current_user: Currently authenticated user (advisor)
+        
+    Returns:
+        BacktestResponse with complete historical performance analysis
+        
+    Raises:
+        HTTPException: If backtesting fails or invalid parameters provided
+    """
+    logger.info(f"Optimized portfolio backtesting requested by user {current_user.email}")
+    
+    try:
+        # The optimized service now handles all validation internally
+        # including portfolio weights and ticker validation
+        
+        # Create optimized backtest service and perform concurrent analysis
+        backtest_service = PortfolioBacktestService()
+        result = await backtest_service.perform_backtest(request)
+        
+        logger.info(
+            f"Optimized backtesting completed for {len(request.composition)} assets "
+            f"over period {request.period}. "
+            f"Total return: {result.performance_metrics.get('total_return', 0):.2%}. "
+            f"Sharpe ratio: {result.performance_metrics.get('sharpe_ratio', 0):.2f}. "
+            f"Max drawdown: {result.performance_metrics.get('max_drawdown', 0):.2%}"
+        )
+        
+        return result
+        
+    except ValueError as e:
+        logger.error(f"ValueError in portfolio backtesting: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error in portfolio backtesting: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to perform portfolio backtesting. Please try again later."
         ) 

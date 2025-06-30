@@ -20,6 +20,7 @@ import {
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import { CACTUS_CHART_COLORS, getSectorColor, getChartColor } from '@/lib/chart-colors';
 import AddAssetDialog from './components/AddAssetDialog';
+import HistoricalPerformanceChart from './components/HistoricalPerformanceChart';
 
 const riskProfileLabels = {
   LOW: 'Conservador',
@@ -427,6 +428,13 @@ export default function AssetManagementPage() {
 
         </div>
       )}
+
+      {/* Historical Performance Analysis - Full Width */}
+      <HistoricalPerformanceChart 
+        portfolioId={portfolioId}
+        composition={portfolio.positions || []}
+        isComplete={isComplete}
+      />
 
     </div>
   );

@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Cactus Wealth Dashboard API"
     API_V1_STR: str = "/api/v1"
     DATABASE_URL: str = "postgresql://cactus_user:cactus_password@localhost:5432/cactus_db"
+    REDIS_URL: str = "redis://localhost:6379"
     
     # CORS settings
     CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"

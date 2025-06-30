@@ -310,6 +310,39 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Portfolio Backtesting methods
+  async backtestPortfolio(request: {
+    composition: Array<{
+      ticker: string;
+      weight: number;
+    }>;
+    benchmarks: string[];
+    period: string;
+  }): Promise<{
+    start_date: string;
+    end_date: string;
+    portfolio_composition: Array<{
+      ticker: string;
+      weight: number;
+    }>;
+    benchmarks: string[];
+    data_points: Array<{
+      date: string;
+      portfolio_value: number;
+      benchmark_values: Record<string, number>;
+      dividend_events: Array<{
+        ticker: string;
+        amount: number;
+      }>;
+    }>;
+    performance_metrics: Record<string, number>;
+  }> {
+    return this.request(`/portfolios/backtest`, {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

@@ -384,4 +384,40 @@ class ModelPortfolioWeightValidation(BaseModel):
     message: str
     
     class Config:
+        from_attributes = True
+
+
+# ============ BACKTESTING SCHEMAS ============
+
+class PortfolioComposition(BaseModel):
+    """Schema for portfolio composition in backtesting request."""
+    ticker: str
+    weight: float  # As decimal (0.0 to 1.0)
+
+
+class BacktestRequest(BaseModel):
+    """Schema for portfolio backtesting request."""
+    composition: List[PortfolioComposition]
+    benchmarks: List[str] = ["SPY"]  # Default benchmark
+    period: str = "1y"  # 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max
+
+
+class BacktestDataPoint(BaseModel):
+    """Schema for a single data point in backtesting response."""
+    date: str  # ISO format date
+    portfolio_value: float
+    benchmark_values: dict  # {"SPY": 105.2, "QQQ": 108.1}
+    dividend_events: List[dict] = []  # [{"ticker": "AAPL", "amount": 0.25}]
+
+
+class BacktestResponse(BaseModel):
+    """Schema for portfolio backtesting response."""
+    start_date: str
+    end_date: str
+    portfolio_composition: List[PortfolioComposition]
+    benchmarks: List[str]
+    data_points: List[BacktestDataPoint]
+    performance_metrics: dict  # {"total_return": 0.15, "volatility": 0.18, "sharpe_ratio": 0.83}
+    
+    class Config:
         from_attributes = True 
