@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, Plus, Edit2, Trash2, PieChart } from 'lucide-react';
+import { ArrowLeft, Plus, Edit2, Trash2, PieChart, Check, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api';
 import { 
@@ -41,7 +41,9 @@ export default function AssetManagementPage() {
 
   const [portfolio, setPortfolio] = useState<ModelPortfolio | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editingPosition, setEditingPosition] = useState<ModelPortfolioPosition | null>(null);
+  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+  const [currentEditValue, setCurrentEditValue] = useState<string>('');
+  const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
     fetchPortfolio();
@@ -67,18 +69,40 @@ export default function AssetManagementPage() {
       return;
     }
 
+    setIsUpdating(true);
     try {
       await apiClient.updateModelPortfolioPosition(portfolioId, position.id, {
         weight: weight
       });
       
       toast.success('Ponderación actualizada');
-      setEditingPosition(null);
+      setEditingRowId(null);
       fetchPortfolio();
     } catch (error: any) {
       console.error('Error updating position:', error);
       toast.error(error.message || 'Error al actualizar la ponderación');
+    } finally {
+      setIsUpdating(false);
     }
+  };
+
+  const handleEditPosition = (position: ModelPortfolioPosition) => {
+    setEditingRowId(position.id);
+    setCurrentEditValue((Number(position.weight) * 100).toFixed(1));
+  };
+
+  const handleConfirmEdit = async (position: ModelPortfolioPosition) => {
+    const newWeight = parseFloat(currentEditValue);
+    if (isNaN(newWeight) || newWeight <= 0 || newWeight > 100) {
+      toast.error('La ponderación debe estar entre 0.1% y 100%');
+      return;
+    }
+    await handleUpdatePosition(position, newWeight);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRowId(null);
+    setCurrentEditValue('');
   };
 
   const handleDeletePosition = async (position: ModelPortfolioPosition) => {
@@ -265,22 +289,15 @@ export default function AssetManagementPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {editingPosition?.id === position.id ? (
+                      {editingRowId === position.id ? (
                         <div className="flex space-x-2">
                           <Input
                             type="number"
                             min="0.1"
                             max="100"
                             step="0.1"
-                            defaultValue={(Number(position.weight) * 100).toFixed(1)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                const input = e.target as HTMLInputElement;
-                                handleUpdatePosition(position, parseFloat(input.value));
-                              } else if (e.key === 'Escape') {
-                                setEditingPosition(null);
-                              }
-                            }}
+                            value={currentEditValue}
+                            onChange={(e) => setCurrentEditValue(e.target.value)}
                             className="w-20"
                             autoFocus
                           />
@@ -294,22 +311,47 @@ export default function AssetManagementPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end space-x-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setEditingPosition(position)}
-                          className="h-8 w-8 p-0 hover:bg-cactus-100"
-                        >
-                          <Edit2 className="h-4 w-4 text-sage-600" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleDeletePosition(position)}
-                          className="h-8 w-8 p-0 hover:bg-red-100"
-                        >
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
+                        {editingRowId === position.id ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleConfirmEdit(position)}
+                              disabled={isUpdating}
+                              className="h-8 w-8 p-0 hover:bg-green-100"
+                            >
+                              <Check className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                              disabled={isUpdating}
+                              className="h-8 w-8 p-0 hover:bg-red-100"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditPosition(position)}
+                              className="h-8 w-8 p-0 hover:bg-cactus-100"
+                            >
+                              <Edit2 className="h-4 w-4 text-sage-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeletePosition(position)}
+                              className="h-8 w-8 p-0 hover:bg-red-100"
+                            >
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
