@@ -274,6 +274,42 @@ class ApiClient {
       method: 'DELETE',
     });
   }
+
+  // Get specific model portfolio with positions
+  async getModelPortfolio(portfolioId: number): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}`);
+  }
+
+  // Asset search methods
+  async searchAssets(query: string, limit: number = 10): Promise<any[]> {
+    return this.request<any[]>(`/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+  }
+
+  // Model Portfolio Position methods
+  async addModelPortfolioPosition(portfolioId: number, position: {
+    asset_id: number;
+    weight: number;
+  }): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}/positions`, {
+      method: 'POST',
+      body: JSON.stringify(position),
+    });
+  }
+
+  async updateModelPortfolioPosition(portfolioId: number, positionId: number, position: {
+    weight?: number;
+  }): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}/positions/${positionId}`, {
+      method: 'PUT',
+      body: JSON.stringify(position),
+    });
+  }
+
+  async deleteModelPortfolioPosition(portfolioId: number, positionId: number): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}/positions/${positionId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

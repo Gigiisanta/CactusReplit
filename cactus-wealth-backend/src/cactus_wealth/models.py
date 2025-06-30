@@ -161,6 +161,7 @@ class Asset(SQLModel, table=True):
     asset_type: AssetType = Field(
         sa_column=Column(Enum(AssetType), nullable=False)
     )
+    sector: Optional[str] = Field(default=None, max_length=100)
     created_at: datetime = Field(
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime, nullable=False)

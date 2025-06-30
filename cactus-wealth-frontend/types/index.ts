@@ -149,6 +149,7 @@ export interface Asset {
   ticker_symbol: string;
   name: string;
   asset_type: AssetType;
+  sector?: string;
   created_at: string;
 }
 
@@ -216,4 +217,55 @@ export interface Notification {
   is_read: boolean;
   created_at: string;
   user_id: number;
+}
+
+// Model Portfolio types
+export interface ModelPortfolioPosition {
+  id: number;
+  weight: number;
+  created_at: string;
+  updated_at: string;
+  model_portfolio_id: number;
+  asset_id: number;
+  asset: Asset;
+}
+
+export interface ModelPortfolio {
+  id: number;
+  name: string;
+  description?: string;
+  risk_profile: RiskProfile;
+  created_at: string;
+  updated_at: string;
+  positions: ModelPortfolioPosition[];
+}
+
+export interface ModelPortfolioCreate {
+  name: string;
+  description?: string;
+  risk_profile: RiskProfile;
+}
+
+export interface ModelPortfolioPositionCreate {
+  asset_id: number;
+  weight: number;
+}
+
+export interface ModelPortfolioPositionUpdate {
+  weight?: number;
+}
+
+// Chart data types for portfolio visualization
+export interface AssetAllocationData {
+  name: string;
+  value: number;
+  ticker: string;
+  color?: string;
+}
+
+export interface SectorAllocationData {
+  name: string;
+  value: number;
+  assets: string[];
+  color?: string;
 }

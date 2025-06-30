@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PieChart, Plus, Edit, Trash2, Target } from 'lucide-react';
+import { PieChart, Plus, Trash2, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiClient } from '@/lib/api';
 
@@ -232,9 +232,6 @@ export default function PortfoliosPage() {
                       )}
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="ghost">
-                        <Edit className="h-4 w-4" />
-                      </Button>
                       <Button 
                         size="sm" 
                         variant="ghost"
@@ -271,7 +268,7 @@ export default function PortfoliosPage() {
                     <Button 
                       variant="outline" 
                       className="w-full"
-                      onClick={() => window.location.href = `/portfolios/${portfolio.id}`}
+                      onClick={() => window.location.href = `/portfolios/manage/${portfolio.id}`}
                     >
                       <PieChart className="h-4 w-4 mr-2" />
                       Gestionar Activos

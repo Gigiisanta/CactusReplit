@@ -298,11 +298,14 @@ def delete_insurance_policy(session: Session, policy_id: int) -> Optional[Insura
 
 def get_model_portfolios(session: Session, skip: int = 0, limit: int = 100) -> List["ModelPortfolio"]:
     """Get all model portfolios with their positions."""
-    from cactus_wealth.models import ModelPortfolio
+    from cactus_wealth.models import ModelPortfolio, ModelPortfolioPosition
     
     statement = (
         select(ModelPortfolio)
-        .options(selectinload(ModelPortfolio.positions))
+        .options(
+            selectinload(ModelPortfolio.positions)
+            .selectinload(ModelPortfolioPosition.asset)
+        )
         .offset(skip)
         .limit(limit)
     )
@@ -311,12 +314,15 @@ def get_model_portfolios(session: Session, skip: int = 0, limit: int = 100) -> L
 
 def get_model_portfolio(session: Session, portfolio_id: int) -> Optional["ModelPortfolio"]:
     """Get a specific model portfolio by ID with positions."""
-    from cactus_wealth.models import ModelPortfolio
+    from cactus_wealth.models import ModelPortfolio, ModelPortfolioPosition
     
     statement = (
         select(ModelPortfolio)
         .where(ModelPortfolio.id == portfolio_id)
-        .options(selectinload(ModelPortfolio.positions))
+        .options(
+            selectinload(ModelPortfolio.positions)
+            .selectinload(ModelPortfolioPosition.asset)
+        )
     )
     return session.exec(statement).first()
 
@@ -477,3 +483,86 @@ def get_model_portfolio_total_weight(session: Session, portfolio_id: int) -> flo
     ).first()
     
     return float(result) if result else 0.0
+
+
+# ============ ASSET SEARCH CRUD OPERATIONS ============
+
+def search_assets_in_db(session: Session, query: str, limit: int = 10) -> List["Asset"]:
+    """Search for assets in local database by ticker or name."""
+    from cactus_wealth.models import Asset
+    
+    search_pattern = f"%{query.upper()}%"
+    statement = (
+        select(Asset)
+        .where(
+            (Asset.ticker_symbol.ilike(search_pattern)) |
+            (Asset.name.ilike(search_pattern))
+        )
+        .limit(limit)
+    )
+    return list(session.exec(statement).all())
+
+
+def get_or_create_asset_from_yfinance(session: Session, ticker: str) -> Optional["Asset"]:
+    """Get asset data from yfinance and store in local database if not exists."""
+    import yfinance as yf
+    from cactus_wealth.models import Asset, AssetType
+    
+    try:
+        # First check if asset already exists in our database
+        existing_asset = session.exec(
+            select(Asset).where(Asset.ticker_symbol == ticker.upper())
+        ).first()
+        
+        if existing_asset:
+            return existing_asset
+        
+        # Fetch from yfinance
+        ticker_obj = yf.Ticker(ticker)
+        info = ticker_obj.info
+        
+        # Extract asset information
+        name = info.get('longName') or info.get('shortName', ticker.upper())
+        sector = info.get('sector')
+        
+        # Determine asset type based on yfinance info
+        asset_type = AssetType.STOCK  # Default
+        if 'ETF' in name.upper() or info.get('quoteType') == 'ETF':
+            asset_type = AssetType.ETF
+        elif info.get('quoteType') == 'BOND':
+            asset_type = AssetType.BOND
+        
+        # Create new asset
+        new_asset = Asset(
+            ticker_symbol=ticker.upper(),
+            name=name,
+            asset_type=asset_type,
+            sector=sector
+        )
+        
+        session.add(new_asset)
+        session.commit()
+        session.refresh(new_asset)
+        return new_asset
+        
+    except Exception:
+        # If yfinance fails, return None
+        return None
+
+
+def search_assets(session: Session, query: str, limit: int = 10) -> List["Asset"]:
+    """
+    Unified asset search function. 
+    First searches local database, then tries yfinance for new assets.
+    """
+    # Step 1: Search in local database
+    local_results = search_assets_in_db(session, query, limit)
+    
+    # Step 2: If query looks like a ticker and we have < limit results, try yfinance
+    if len(local_results) < limit and len(query) <= 10 and query.replace('.', '').replace('-', '').isalnum():
+        # Try to fetch from yfinance
+        yf_asset = get_or_create_asset_from_yfinance(session, query)
+        if yf_asset and yf_asset not in local_results:
+            local_results.append(yf_asset)
+    
+    return local_results[:limit]

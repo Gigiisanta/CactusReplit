@@ -93,6 +93,7 @@ class AssetRead(BaseModel):
     ticker_symbol: str
     name: str
     asset_type: AssetType
+    sector: Optional[str] = None
     created_at: datetime
     
     class Config:
