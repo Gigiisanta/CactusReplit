@@ -10,4 +10,9 @@ function poorlyFormatted(   param:any     ){
 return param
 }
 
+// Nuevo error de formato añadido
+const anotherBadExample={foo:1,bar:2,baz:   3};
+
+let   terribleSpacing    =    "this has horrible spacing"     ;
+
 export default badlyFormatted 
