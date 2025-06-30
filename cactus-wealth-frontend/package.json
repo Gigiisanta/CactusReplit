@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "prepare": "husky install",
+    "prepare": "husky",
     "lint": "next lint",
     "lint:fix": "next lint --fix",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -20,7 +20,9 @@
     "e2e:debug": "playwright test --debug",
     "e2e:report": "playwright show-report",
     "type-check": "tsc --noEmit",
-    "quality": "npm run format && npm run lint:fix && npm run type-check"
+    "quality": "npm run format && npm run lint:fix && npm run type-check",
+    "lint-staged": "lint-staged",
+    "analyze:dead-code": "ts-prune"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.1.2",
@@ -40,17 +42,19 @@
     "@radix-ui/react-tabs": "^1.0.4",
     "@radix-ui/react-toast": "^1.1.5",
     "@tanstack/react-table": "^8.21.3",
+    "axios": "^1.10.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.294.0",
-    "next": "14.0.4",
+    "next": "^14.2.30",
     "next-themes": "^0.4.6",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "recharts": "^3.0.2",
     "sonner": "^2.0.5",
     "tailwind-merge": "^2.6.0",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@playwright/test": "^1.40.0",
@@ -79,10 +83,15 @@
     "typescript": "^5.2.2"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+    "*.{js,jsx,ts,tsx}": [
+      "prettier --write",
+      "eslint --fix"
     ],
-    "*.{js,css,md,json}": "prettier --write"
+    "*.{json,md,yml,yaml}": [
+      "prettier --write"
+    ]
+  },
+  "ts-prune": {
+    "ignore": "playwright\\.config\\.ts|tailwind\\.config\\.ts|postcss\\.config\\.js|next\\.config\\.js|e2e/.*|\\.next/.*|app/.*/\\(page\\|layout\\|template\\|loading\\|error\\|not-found\\)\\.tsx"
   }
 }

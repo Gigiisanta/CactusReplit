@@ -26,7 +26,7 @@ async def create_all_snapshots(ctx: Dict[str, Any]) -> str:
     for KPI calculations like Monthly Growth.
     
     Args:
-        ctx: ARQ context dictionary
+        ctx: ARQ context dictionary containing database engine
         
     Returns:
         Success message with snapshot count
@@ -36,9 +36,12 @@ async def create_all_snapshots(ctx: Dict[str, Any]) -> str:
     errors = 0
     
     try:
-        # Create database session
-        with Session(engine) as db_session:
-            # Get all portfolio IDs
+        # Get database engine from context
+        db_engine = ctx.get('engine', engine)
+        
+        # Create database session with proper context management
+        with Session(db_engine) as db_session:
+            # Get all portfolio IDs and names
             statement = select(Portfolio.id, Portfolio.name)
             portfolios = db_session.exec(statement).all()
             
@@ -48,7 +51,7 @@ async def create_all_snapshots(ctx: Dict[str, Any]) -> str:
             
             logger.info(f"Found {len(portfolios)} portfolios to snapshot")
             
-            # Initialize services
+            # Initialize services with the session
             market_data_provider = get_market_data_provider()
             portfolio_service = PortfolioService(
                 db_session=db_session,
@@ -70,8 +73,11 @@ async def create_all_snapshots(ctx: Dict[str, Any]) -> str:
                         f"❌ Failed to create snapshot for portfolio '{portfolio_name}' (ID: {portfolio_id}): {str(e)}"
                     )
             
+            # Commit all changes in a single transaction
+            db_session.commit()
+            
             result_message = (
-                f"Daily snapshots completed: {snapshots_created} created, {errors} errors"
+                f"Successfully created {snapshots_created} snapshots, {errors} errors"
             )
             logger.info(result_message)
             return result_message
@@ -86,9 +92,13 @@ async def startup(ctx: Dict[str, Any]) -> None:
     """
     ARQ worker startup function.
     
-    Schedules the recurring daily snapshot task.
+    Initializes database engine in the worker context and schedules recurring tasks.
     """
     logger.info("🚀 ARQ Worker starting up...")
+    
+    # Store database engine in worker context for reuse
+    ctx['engine'] = engine
+    logger.info("📦 Database engine initialized in worker context")
     
     # Schedule the daily snapshot task
     # This will run every 24 hours, starting 1 minute after startup for testing
@@ -109,8 +119,20 @@ async def startup(ctx: Dict[str, Any]) -> None:
 
 
 async def shutdown(ctx: Dict[str, Any]) -> None:
-    """ARQ worker shutdown function."""
+    """
+    ARQ worker shutdown function.
+    
+    Properly disposes of database connections.
+    """
     logger.info("🛑 ARQ Worker shutting down...")
+    
+    # Dispose of database engine if it exists in context
+    if 'engine' in ctx:
+        try:
+            await ctx['engine'].dispose()
+            logger.info("🗄️ Database engine disposed properly")
+        except Exception as e:
+            logger.error(f"Error disposing database engine: {e}")
 
 
 class WorkerSettings:
@@ -144,7 +166,9 @@ class WorkerSettings:
 async def test_snapshot_creation():
     """Test function to manually trigger snapshot creation."""
     logger.info("Testing snapshot creation...")
-    result = await create_all_snapshots({})
+    # Create a mock context with engine
+    test_ctx = {'engine': engine}
+    result = await create_all_snapshots(test_ctx)
     logger.info(f"Test result: {result}")
 
 

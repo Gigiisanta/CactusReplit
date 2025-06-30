@@ -42,7 +42,7 @@ const customJestConfig = {
   },
 
   // Module mappings for Next.js and CSS
-  moduleNameMap: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '^@/components/(.*)$': '<rootDir>/components/$1',
     '^@/app/(.*)$': '<rootDir>/app/$1',

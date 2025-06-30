@@ -31,29 +31,33 @@ ENV POETRY_NO_INTERACTION=1 \
 # Set work directory
 WORKDIR /app
 
-# Copy the robust entrypoint script
-COPY entrypoint.sh /app/entrypoint.sh
+# 🚀 OPTIMIZATION: Copy dependency files first for maximum caching efficiency
+# This layer will only be rebuilt when dependencies change, not when source code changes
+COPY pyproject.toml poetry.lock* ./
 
-# Give execution permissions to the entrypoint script
+# 🚀 OPTIMIZATION: Install dependencies in a separate layer for optimal caching
+# This is the expensive operation that we want to cache
+RUN poetry install --only main && rm -rf $POETRY_CACHE_DIR
+
+# 🚀 OPTIMIZATION: Copy entrypoint script after dependencies for better caching
+COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
+
+# 🚀 OPTIMIZATION: Copy source code LAST to maximize cache hits
+# Source code changes frequently, but dependencies change less often
+COPY . .
 
 # Create startup script that handles full installation, migration, and server startup
 RUN echo '#!/bin/bash\n\
 set -e\n\
-echo "Installing all dependencies and current project..."\n\
-poetry install --only main\n\
-echo "Running database migrations..."\n\
-poetry run alembic upgrade head\n\
-echo "Starting FastAPI server..."\n\
+echo "Starting FastAPI server with intelligent migrations..."\n\
 exec poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload' > /usr/local/bin/start-server.sh && \
     chmod +x /usr/local/bin/start-server.sh
 
 # Create ARQ worker startup script
 RUN echo '#!/bin/bash\n\
 set -e\n\
-echo "Installing dependencies and current project for ARQ worker..."\n\
-poetry install --only main\n\
-echo "Starting ARQ worker..."\n\
+echo "Starting ARQ worker with intelligent setup..."\n\
 exec poetry run arq src.cactus_wealth.worker.WorkerSettings' > /usr/local/bin/start-worker.sh && \
     chmod +x /usr/local/bin/start-worker.sh
 
@@ -64,7 +68,7 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Set the robust entrypoint script
+# Set the intelligent entrypoint script
 ENTRYPOINT ["/app/entrypoint.sh"]
 
 # Default command - will be passed as argument to entrypoint

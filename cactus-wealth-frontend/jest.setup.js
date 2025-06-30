@@ -131,9 +131,3 @@ afterEach(() => {
   localStorageMock.clear();
   sessionStorageMock.clear();
 });
-
-// Extend Jest matchers
-expect.extend({
-  toBeInTheDocument: require('@testing-library/jest-dom/matchers')
-    .toBeInTheDocument,
-});

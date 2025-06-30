@@ -1,30 +1,35 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/stores/auth.store';
 import { apiClient } from '@/lib/api';
-import { AuthContextType, User, UserRole } from '@/types';
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+import { UserRole, User } from '@/types';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const {
+    login: zustandLogin,
+    logout: zustandLogout,
+    isAuthenticated,
+  } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
-    // Check for stored token on app initialization
-    const storedToken = localStorage.getItem('cactus_token');
-    if (storedToken) {
-      setToken(storedToken);
-      // In a real app, you'd validate the token here
-      // For now, we'll assume it's valid if it exists
-      setIsLoading(false);
-    } else {
-      setIsLoading(false);
-    }
-  }, []);
+    // Initialize loading state - Zustand with persist will handle state restoration
+    setIsLoading(false);
+
+    // Listen for storage changes (logout in other tabs)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'cactus-auth-storage' && e.newValue === null) {
+        // Storage was cleared in another tab, logout here too
+        zustandLogout();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [zustandLogout]);
 
   const login = async (username: string, password: string) => {
     try {
@@ -36,16 +41,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { access_token } = tokenResponse;
 
-      // Store token in localStorage
-      localStorage.setItem('cactus_token', access_token);
-      setToken(access_token);
-
-      // In a real app, you'd decode the JWT or fetch user data
-      // For now, we'll create a mock user object
+      // Create mock user object (in real app, decode JWT or fetch user data)
       const mockUser: User = {
         id: 1,
         username: username,
-        email: 'demo@cactuswealth.com', // Would come from token/API
+        email: 'demo@cactuswealth.com',
         is_active: true,
         role: UserRole.JUNIOR_ADVISOR,
         created_at: new Date().toISOString(),
@@ -53,7 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clients: [],
       };
 
-      setUser(mockUser);
+      // Use Zustand login action
+      zustandLogin(mockUser, access_token);
 
       // Redirect to dashboard
       router.push('/dashboard');
@@ -65,7 +66,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (username: string, email: string, password: string, role: UserRole) => {
+  const register = async (
+    username: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => {
     try {
       setIsLoading(true);
 
@@ -88,29 +94,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const logout = () => {
-    localStorage.removeItem('cactus_token');
-    setToken(null);
-    setUser(null);
+    zustandLogout();
     router.push('/login');
   };
 
-  const value: AuthContextType = {
+  // Create a compatibility layer for existing components
+  const { user, token } = useAuthStore();
+  const authContextValue = {
     user,
     token,
-    isAuthenticated: !!token,
+    isAuthenticated,
     isLoading,
     login,
     register,
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={authContextValue}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
+// Keep the existing context for backward compatibility during transition
+const AuthContext = React.createContext<any>(undefined);
+
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context = React.useContext(AuthContext);
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }
+
+// Also export the Zustand hook directly for components that want to use it
+export { useAuth as useAuthZustand } from '@/stores/auth.store';

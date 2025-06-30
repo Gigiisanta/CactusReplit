@@ -13,6 +13,7 @@ import {
   InsurancePolicy,
   Notification,
 } from '@/types';
+import { apiClientInterceptor } from './apiClient';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
@@ -25,10 +26,9 @@ class ApiClient {
   }
 
   private getAuthHeaders(): HeadersInit {
-    const token = localStorage.getItem('cactus_token');
+    // Now we'll rely on the interceptor for auth headers, but keep this for special cases
     return {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     };
   }
 
@@ -101,33 +101,25 @@ class ApiClient {
     });
   }
 
-  // Client methods
+  // Client methods (using interceptor for automatic auth)
   async getClients(): Promise<Client[]> {
-    return this.request<Client[]>('/clients/');
+    return apiClientInterceptor.get<Client[]>('/clients/');
   }
 
   async getClient(clientId: number): Promise<Client> {
-    return this.request<Client>(`/clients/${clientId}`);
+    return apiClientInterceptor.get<Client>(`/clients/${clientId}`);
   }
 
   async createClient(client: ClientCreate): Promise<Client> {
-    return this.request<Client>('/clients/', {
-      method: 'POST',
-      body: JSON.stringify(client),
-    });
+    return apiClientInterceptor.post<Client>('/clients/', client);
   }
 
   async updateClient(clientId: number, client: ClientUpdate): Promise<Client> {
-    return this.request<Client>(`/clients/${clientId}`, {
-      method: 'PUT',
-      body: JSON.stringify(client),
-    });
+    return apiClientInterceptor.put<Client>(`/clients/${clientId}`, client);
   }
 
   async deleteClient(clientId: number): Promise<Client> {
-    return this.request<Client>(`/clients/${clientId}`, {
-      method: 'DELETE',
-    });
+    return apiClientInterceptor.delete<Client>(`/clients/${clientId}`);
   }
 
   // Portfolio methods
@@ -155,76 +147,105 @@ class ApiClient {
     return await response.blob();
   }
 
-  // Dashboard methods
+  // Dashboard methods (using interceptor for automatic auth)
   async getDashboardSummary(): Promise<DashboardSummaryResponse> {
-    return this.request<DashboardSummaryResponse>('/dashboard/summary');
+    return apiClientInterceptor.get<DashboardSummaryResponse>(
+      '/dashboard/summary'
+    );
   }
 
-  // Report methods
-  async generateReport(clientId: number, reportType: string = 'PORTFOLIO_SUMMARY'): Promise<ReportGenerationResponse> {
-    return this.request<ReportGenerationResponse>(`/reports/clients/${clientId}/generate-report`, {
-      method: 'POST',
-      body: JSON.stringify({
+  // Report methods (using interceptor for automatic auth)
+  async generateReport(
+    clientId: number,
+    reportType: string = 'PORTFOLIO_SUMMARY'
+  ): Promise<ReportGenerationResponse> {
+    return apiClientInterceptor.post<ReportGenerationResponse>(
+      `/reports/clients/${clientId}/generate-report`,
+      {
         client_id: clientId,
         report_type: reportType,
-      }),
-    });
+      }
+    );
   }
 
   // Investment Account methods
-  async createInvestmentAccount(clientId: number, account: {
-    platform: string;
-    account_number?: string;
-    aum: number;
-  }): Promise<InvestmentAccount> {
-    return this.request<InvestmentAccount>(`/clients/${clientId}/investment-accounts/`, {
-      method: 'POST',
-      body: JSON.stringify({
-        ...account,
-        client_id: clientId,
-      }),
-    });
+  async createInvestmentAccount(
+    clientId: number,
+    account: {
+      platform: string;
+      account_number?: string;
+      aum: number;
+    }
+  ): Promise<InvestmentAccount> {
+    return this.request<InvestmentAccount>(
+      `/clients/${clientId}/investment-accounts/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...account,
+          client_id: clientId,
+        }),
+      }
+    );
   }
 
-  async updateInvestmentAccount(accountId: number, account: {
-    platform?: string;
-    account_number?: string;
-    aum?: number;
-  }): Promise<InvestmentAccount> {
-    return this.request<InvestmentAccount>(`/investment-accounts/${accountId}`, {
-      method: 'PUT',
-      body: JSON.stringify(account),
-    });
+  async updateInvestmentAccount(
+    accountId: number,
+    account: {
+      platform?: string;
+      account_number?: string;
+      aum?: number;
+    }
+  ): Promise<InvestmentAccount> {
+    return this.request<InvestmentAccount>(
+      `/investment-accounts/${accountId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(account),
+      }
+    );
   }
 
   async deleteInvestmentAccount(accountId: number): Promise<InvestmentAccount> {
-    return this.request<InvestmentAccount>(`/investment-accounts/${accountId}`, {
-      method: 'DELETE',
-    });
+    return this.request<InvestmentAccount>(
+      `/investment-accounts/${accountId}`,
+      {
+        method: 'DELETE',
+      }
+    );
   }
 
   // Insurance Policy methods
-  async createInsurancePolicy(clientId: number, policy: {
-    policy_number: string;
-    insurance_type: string;
-    premium_amount: number;
-    coverage_amount: number;
-  }): Promise<InsurancePolicy> {
-    return this.request<InsurancePolicy>(`/clients/${clientId}/insurance-policies/`, {
-      method: 'POST',
-      body: JSON.stringify({
-        ...policy,
-        client_id: clientId,
-      }),
-    });
+  async createInsurancePolicy(
+    clientId: number,
+    policy: {
+      policy_number: string;
+      insurance_type: string;
+      premium_amount: number;
+      coverage_amount: number;
+    }
+  ): Promise<InsurancePolicy> {
+    return this.request<InsurancePolicy>(
+      `/clients/${clientId}/insurance-policies/`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          ...policy,
+          client_id: clientId,
+        }),
+      }
+    );
   }
 
-  async updateInsurancePolicy(policyId: number, policy: {
-    policy_number?: string;
-    insurance_type?: string;
-    premium_amount?: number;
-    coverage_amount?: number;
-  }): Promise<InsurancePolicy> {
+  async updateInsurancePolicy(
+    policyId: number,
+    policy: {
+      policy_number?: string;
+      insurance_type?: string;
+      premium_amount?: number;
+      coverage_amount?: number;
+    }
+  ): Promise<InsurancePolicy> {
     return this.request<InsurancePolicy>(`/insurance-policies/${policyId}`, {
       method: 'PUT',
       body: JSON.stringify(policy),
@@ -237,9 +258,11 @@ class ApiClient {
     });
   }
 
-  // Notification methods
+  // Notification methods (using interceptor for automatic auth)
   async getNotifications(limit: number = 10): Promise<Notification[]> {
-    return this.request<Notification[]>(`/notifications?limit=${limit}`);
+    return apiClientInterceptor.get<Notification[]>(
+      `/notifications?limit=${limit}`
+    );
   }
 
   // Model Portfolio methods
@@ -258,11 +281,14 @@ class ApiClient {
     });
   }
 
-  async updateModelPortfolio(portfolioId: number, portfolio: {
-    name?: string;
-    description?: string;
-    risk_profile?: 'LOW' | 'MEDIUM' | 'HIGH';
-  }): Promise<any> {
+  async updateModelPortfolio(
+    portfolioId: number,
+    portfolio: {
+      name?: string;
+      description?: string;
+      risk_profile?: 'LOW' | 'MEDIUM' | 'HIGH';
+    }
+  ): Promise<any> {
     return this.request<any>(`/model-portfolios/${portfolioId}`, {
       method: 'PUT',
       body: JSON.stringify(portfolio),
@@ -282,33 +308,51 @@ class ApiClient {
 
   // Asset search methods
   async searchAssets(query: string, limit: number = 10): Promise<any[]> {
-    return this.request<any[]>(`/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+    return this.request<any[]>(
+      `/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`
+    );
   }
 
   // Model Portfolio Position methods
-  async addModelPortfolioPosition(portfolioId: number, position: {
-    asset_id: number;
-    weight: number;
-  }): Promise<any> {
+  async addModelPortfolioPosition(
+    portfolioId: number,
+    position: {
+      asset_id: number;
+      weight: number;
+    }
+  ): Promise<any> {
     return this.request<any>(`/model-portfolios/${portfolioId}/positions`, {
       method: 'POST',
       body: JSON.stringify(position),
     });
   }
 
-  async updateModelPortfolioPosition(portfolioId: number, positionId: number, position: {
-    weight?: number;
-  }): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}/positions/${positionId}`, {
-      method: 'PUT',
-      body: JSON.stringify(position),
-    });
+  async updateModelPortfolioPosition(
+    portfolioId: number,
+    positionId: number,
+    position: {
+      weight?: number;
+    }
+  ): Promise<any> {
+    return this.request<any>(
+      `/model-portfolios/${portfolioId}/positions/${positionId}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(position),
+      }
+    );
   }
 
-  async deleteModelPortfolioPosition(portfolioId: number, positionId: number): Promise<any> {
-    return this.request<any>(`/model-portfolios/${portfolioId}/positions/${positionId}`, {
-      method: 'DELETE',
-    });
+  async deleteModelPortfolioPosition(
+    portfolioId: number,
+    positionId: number
+  ): Promise<any> {
+    return this.request<any>(
+      `/model-portfolios/${portfolioId}/positions/${positionId}`,
+      {
+        method: 'DELETE',
+      }
+    );
   }
 
   // Portfolio Backtesting methods

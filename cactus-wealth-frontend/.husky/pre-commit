@@ -1,5 +1,18 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-cd cactus-wealth-frontend
-npx lint-staged 
+# Run lint-staged for frontend
+cd cactus-wealth-frontend && npm run lint-staged
+
+# Run backend formatting check
+cd ../cactus-wealth-backend
+if docker-compose ps backend | grep -q "Up"; then
+    echo "🐍 Checking backend code formatting..."
+    if ! docker-compose exec -T backend poetry run ruff check --diff .; then
+        echo "❌ Backend code formatting issues detected!"
+        echo "💡 Run 'format' command to fix automatically"
+        exit 1
+    fi
+else
+    echo "⚠️  Backend container not running, skipping backend checks"
+fi

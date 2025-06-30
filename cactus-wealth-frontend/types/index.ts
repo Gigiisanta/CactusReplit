@@ -186,7 +186,12 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, role: UserRole) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -196,11 +201,6 @@ export interface DashboardSummaryResponse {
   assets_under_management: number;
   monthly_growth_percentage: number | null;
   reports_generated_this_quarter: number;
-}
-
-export interface LoginData {
-  username: string;
-  password: string;
 }
 
 // Report types
@@ -238,21 +238,6 @@ export interface ModelPortfolio {
   created_at: string;
   updated_at: string;
   positions: ModelPortfolioPosition[];
-}
-
-export interface ModelPortfolioCreate {
-  name: string;
-  description?: string;
-  risk_profile: RiskProfile;
-}
-
-export interface ModelPortfolioPositionCreate {
-  asset_id: number;
-  weight: number;
-}
-
-export interface ModelPortfolioPositionUpdate {
-  weight?: number;
 }
 
 // Chart data types for portfolio visualization

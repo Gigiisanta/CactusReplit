@@ -1252,6 +1252,35 @@ class PortfolioBacktestService:
             logger.warning(f"Redis connection failed: {e}. Operating without cache.")
             self.redis_client = None
     
+    def _ensure_timezone_aware(self, target_date: datetime, reference_index: pd.DatetimeIndex) -> datetime:
+        """
+        Ensure target_date is timezone-aware and compatible with reference_index.
+        
+        This utility function resolves timezone compatibility issues when comparing
+        datetime objects with pandas DatetimeIndex objects from yfinance, which
+        are typically timezone-aware.
+        
+        Args:
+            target_date: The datetime object to make timezone-aware
+            reference_index: The pandas DatetimeIndex to get timezone info from
+            
+        Returns:
+            A timezone-aware datetime object compatible with reference_index
+            
+        Raises:
+            None - handles all cases gracefully
+        """
+        # If target_date is already timezone-aware, return as-is
+        if target_date.tzinfo is not None:
+            return target_date
+            
+        # If reference_index has timezone info, apply it to target_date
+        if hasattr(reference_index, 'tz') and reference_index.tz is not None:
+            return target_date.replace(tzinfo=reference_index.tz)
+            
+        # If reference_index has no timezone, return target_date unchanged
+        return target_date
+
     async def perform_backtest(self, request: BacktestRequest) -> BacktestResponse:
         """
         Perform optimized portfolio backtesting with caching and concurrency.
@@ -1355,11 +1384,15 @@ class PortfolioBacktestService:
                 
                 close_prices = data["Close"]
                 
-                # Cache the result
+                # Ensure close_prices is a Series (in case yfinance returns DataFrame)
+                if isinstance(close_prices, pd.DataFrame):
+                    close_prices = close_prices.squeeze()  # Convert single-column DataFrame to Series
+                
+                # Cache the result with robust serialization
                 if self.redis_client and not close_prices.empty:
                     try:
                         cache_data = {
-                            'prices': close_prices.tolist(),
+                            'prices': close_prices.values.tolist(),  # Use .values.tolist() for safe serialization
                             'dates': close_prices.index.strftime('%Y-%m-%d').tolist()
                         }
                         self.redis_client.setex(cache_key, 86400, json.dumps(cache_data))  # 24h TTL
@@ -1376,9 +1409,21 @@ class PortfolioBacktestService:
         tasks = [fetch_ticker_data(ticker) for ticker in tickers]
         results = await asyncio.gather(*tasks)
         
-        # Combine results into DataFrame
+        # Combine results into DataFrame with proper DatetimeIndex
         data_dict = {ticker: series for ticker, series in results}
         combined_df = pd.DataFrame(data_dict)
+        
+        # Ensure DataFrame has a proper DatetimeIndex for backtesting
+        if not isinstance(combined_df.index, pd.DatetimeIndex):
+            # Try to convert index to datetime if it's not already
+            try:
+                combined_df.index = pd.to_datetime(combined_df.index)
+            except Exception as e:
+                logger.error(f"Failed to convert index to DatetimeIndex: {e}")
+                raise ValueError("Invalid date index in historical data")
+        
+        # Sort by date to ensure chronological order
+        combined_df = combined_df.sort_index()
         
         return combined_df.dropna()
     
@@ -1416,7 +1461,9 @@ class PortfolioBacktestService:
                     period_days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
                     if period in period_days:
                         start_date = end_date - timedelta(days=period_days[period])
-                        dividends = dividends[dividends.index >= start_date]
+                        # Ensure timezone compatibility before comparison
+                        compatible_start_date = self._ensure_timezone_aware(start_date, dividends.index)
+                        dividends = dividends[dividends.index >= compatible_start_date]
                 
                 # Cache result
                 if self.redis_client:
@@ -1448,6 +1495,19 @@ class PortfolioBacktestService:
         self, hist_data: pd.DataFrame, composition: List[PortfolioComposition], tickers: List[str]
     ) -> pd.Series:
         """Calculate portfolio daily returns (not cumulative) for accurate metrics."""
+        
+        # Robust validation of DataFrame structure for backtesting
+        if hist_data.empty:
+            raise ValueError("Historical data is empty")
+        
+        # Ensure DataFrame has proper DatetimeIndex
+        if not isinstance(hist_data.index, pd.DatetimeIndex):
+            raise ValueError("Historical data must have DatetimeIndex for backtesting calculations")
+        
+        # Ensure chronological order
+        if not hist_data.index.is_monotonic_increasing:
+            hist_data = hist_data.sort_index()
+            logger.info("Historical data sorted chronologically for backtesting")
         
         # Create weights dictionary
         weights = {comp.ticker: comp.weight for comp in composition}
@@ -1575,6 +1635,7 @@ class PortfolioBacktestService:
             dividend_events = []
             for ticker, dividends in dividend_data.items():
                 if not dividends.empty and date.date() in [d.date() for d in dividends.index]:
+                    # Use timezone-aware date comparison by converting both to date objects
                     matching_dividends = dividends[dividends.index.date == date.date()]
                     if not matching_dividends.empty:
                         dividend_amount = matching_dividends.iloc[0]
