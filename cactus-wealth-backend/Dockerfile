@@ -37,7 +37,7 @@ WORKDIR /app
 # Copy dependency files first for optimal caching
 COPY pyproject.toml poetry.lock* ./
 
-# Install ALL dependencies (including dev) for building
+# Install ALL dependencies for building
 RUN poetry install && rm -rf $POETRY_CACHE_DIR
 
 # Copy source code

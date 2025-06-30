@@ -5,6 +5,7 @@ description = "Backend API for Cactus Wealth Dashboard - Financial Advisor Platf
 authors = ["Cactus Wealth Team <team@cactuswealth.com>"]
 readme = "README.md"
 packages = [{include = "cactus_wealth", from = "src"}]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = "^3.11"

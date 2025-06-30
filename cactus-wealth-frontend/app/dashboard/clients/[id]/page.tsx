@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { apiClient } from '@/lib/api'
@@ -41,9 +41,9 @@ export default function ClientDetailPage() {
     if (clientId) {
       fetchClientData()
     }
-  }, [clientId])
+  }, [clientId, fetchClientData])
 
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       setIsLoading(true)
       
@@ -51,8 +51,8 @@ export default function ClientDetailPage() {
       const clientData = await apiClient.getClient(clientId)
       setClient(clientData)
 
-      // If client has portfolios, fetch the first portfolio's valuation
-      // In a real app, you'd let the user select which portfolio to view
+      // If client has portfolios, fetch the first portfolio valuation
+      // In a real app, you would let the user select which portfolio to view
       if (clientData.portfolios && clientData.portfolios.length > 0) {
         const portfolioId = clientData.portfolios[0].id
         try {
@@ -60,7 +60,7 @@ export default function ClientDetailPage() {
           setPortfolioValuation(valuationData)
         } catch (valuationError) {
           console.error('Failed to fetch portfolio valuation:', valuationError)
-          // Don't set error here as client data was successful
+          // Do not set error here as client data was successful
         }
       }
     } catch (error) {
@@ -68,7 +68,7 @@ export default function ClientDetailPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [clientId])
 
   const handleDownloadReport = async () => {
     if (!portfolioValuation) return

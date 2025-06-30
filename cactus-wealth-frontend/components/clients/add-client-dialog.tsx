@@ -378,7 +378,7 @@ export function AddClientDialog({ onClientAdded, trigger }: AddClientDialogProps
                   </p>
                   <p className="text-xs text-blue-700">
                     Una vez creado el cliente, podrás gestionar sus cuentas de inversión y pólizas de seguro 
-                    directamente desde la tabla de clientes usando el botón "Editar".
+                    directamente desde la tabla de clientes usando el botón &quot;Editar&quot;.
                   </p>
                 </div>
               </div>
