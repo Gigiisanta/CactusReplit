@@ -241,6 +241,39 @@ class ApiClient {
   async getNotifications(limit: number = 10): Promise<Notification[]> {
     return this.request<Notification[]>(`/notifications?limit=${limit}`);
   }
+
+  // Model Portfolio methods
+  async getModelPortfolios(): Promise<any[]> {
+    return this.request<any[]>('/model-portfolios/');
+  }
+
+  async createModelPortfolio(portfolio: {
+    name: string;
+    description?: string;
+    risk_profile: 'LOW' | 'MEDIUM' | 'HIGH';
+  }): Promise<any> {
+    return this.request<any>('/model-portfolios/', {
+      method: 'POST',
+      body: JSON.stringify(portfolio),
+    });
+  }
+
+  async updateModelPortfolio(portfolioId: number, portfolio: {
+    name?: string;
+    description?: string;
+    risk_profile?: 'LOW' | 'MEDIUM' | 'HIGH';
+  }): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}`, {
+      method: 'PUT',
+      body: JSON.stringify(portfolio),
+    });
+  }
+
+  async deleteModelPortfolio(portfolioId: number): Promise<any> {
+    return this.request<any>(`/model-portfolios/${portfolioId}`, {
+      method: 'DELETE',
+    });
+  }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);

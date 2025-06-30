@@ -1,0 +1,113 @@
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: cactus_db
+    environment:
+      POSTGRES_DB: cactus_db
+      POSTGRES_USER: cactus_user
+      POSTGRES_PASSWORD: cactus_password
+      POSTGRES_HOST_AUTH_METHOD: md5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cactus_user -d cactus_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cactus_network
+
+  backend:
+    build:
+      context: ./cactus-wealth-backend
+      dockerfile: Dockerfile
+    container_name: cactus_backend
+    environment:
+      - DATABASE_URL=postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - DEBUG=true
+      - CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://*:3000
+      - REDIS_URL=redis://cactus_redis:6379
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./cactus-wealth-backend:/app
+      - /app/.venv  # Prevent mounting over virtual environment
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cactus_network
+    command: >
+      sh -c "
+        poetry install &&
+        poetry run alembic upgrade head &&
+        poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+      "
+
+  redis:
+    image: redis:7-alpine
+    container_name: cactus_redis
+    networks:
+      - cactus_network
+
+  frontend:
+    build:
+      context: ./cactus-wealth-frontend
+      dockerfile: Dockerfile.dev
+    container_name: cactus_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NODE_ENV=development
+      - NEXT_TELEMETRY_DISABLED=1
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./cactus-wealth-frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - backend
+    networks:
+      - cactus_network
+  
+  arq_worker:
+    build:
+      context: ./cactus-wealth-backend
+      dockerfile: Dockerfile
+    container_name: cactus_arq_worker
+    command: >
+      sh -c "
+        poetry install &&
+        poetry run arq src.cactus_wealth.worker.WorkerSettings
+      "
+    environment:
+      - DATABASE_URL=postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      - SECRET_KEY=your-secret-key-here-change-in-production
+      - DEBUG=true
+      - REDIS_URL=redis://cactus_redis:6379
+    volumes:
+      - ./cactus-wealth-backend:/app
+      - /app/.venv  # Prevent mounting over virtual environment
+    depends_on:
+      - redis
+      - db
+    networks:
+      - cactus_network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  cactus_network:
+    driver: bridge 

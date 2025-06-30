@@ -14,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   TrendingUp,
+  PieChart,
 } from 'lucide-react';
 import DashboardRecentActivity from '@/app/dashboard/components/DashboardRecentActivity';
 
@@ -33,9 +34,9 @@ const navigationItems = [
     icon: Users,
   },
   {
-    href: '/dashboard/reports',
-    label: 'Reports',
-    icon: FileText,
+    href: '/portfolios',
+    label: 'Carteras',
+    icon: PieChart,
   },
   {
     href: '/dashboard/analytics',

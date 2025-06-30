@@ -1,0 +1,55 @@
+---
+description:
+globs:
+alwaysApply: True
+---
+# 🔒 FinTech Security Rules for Cactus Wealth
+
+## CRITICAL SECURITY PRINCIPLES
+
+### Data Protection & Privacy
+- **Financial Data Encryption**: All sensitive financial data must be encrypted at rest (AES-256) and in transit (TLS 1.3)
+- **PII Handling**: Personal Identifiable Information must be handled according to GDPR/CCPA standards
+- **Data Retention**: Implement proper data retention policies for financial records
+- **Cross-Border Data**: Be aware of data sovereignty requirements for financial data
+
+### Authentication & Authorization
+- **Multi-Factor Authentication**: Always implement MFA for advisor accounts
+- **Session Management**: Use secure session handling with proper timeout mechanisms
+- **Password Policies**: Enforce strong password requirements for all user accounts
+- **JWT Security**: Use short-lived access tokens with secure refresh token rotation
+
+### Role-Based Access Control (RBAC)
+- **Principle of Least Privilege**: Users should only access data they need for their role
+- **Data Segregation**: ADMIN can see all, SENIOR_ADVISOR can see their team, JUNIOR_ADVISOR only their clients
+- **Compliance Role**: COMPLIANCE has read-only access to audit trails and reports
+- **Client Data Isolation**: Strict isolation between different advisor's client data
+
+### Audit & Compliance
+- **Immutable Audit Log**: All financial operations must be logged immutably
+- **Regulatory Compliance**: Ensure compliance with FINRA, SEC, MiFID II standards
+- **Data Lineage**: Track all data modifications with user attribution and timestamps
+- **Backup & Recovery**: Implement secure backup strategies for financial data
+
+### API Security
+- **Rate Limiting**: Implement rate limiting to prevent abuse
+- **Input Validation**: Validate all inputs against potential injection attacks
+- **CORS Configuration**: Restrict CORS to approved domains only
+- **API Versioning**: Maintain secure API versioning practices
+
+### Infrastructure Security
+- **Container Security**: Scan Docker images for vulnerabilities
+- **Network Security**: Use proper network segmentation and firewalls
+- **Secrets Management**: Never hardcode secrets, use environment variables or secret managers
+- **Database Security**: Use encrypted connections and proper database user permissions
+
+## SECURITY CHECKLIST FOR EVERY FEATURE
+
+- [ ] User authentication verified
+- [ ] Role-based authorization implemented
+- [ ] Input validation with Pydantic schemas
+- [ ] Sensitive data encrypted
+- [ ] Audit logging implemented
+- [ ] Error handling doesn't leak sensitive information
+- [ ] Rate limiting configured
+- [ ] Security tests written

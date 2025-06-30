@@ -1,0 +1,268 @@
+---
+description:
+globs:
+alwaysApply: True
+---
+# 🎨 UI/UX Patterns for Cactus Wealth
+
+## BRAND IDENTITY & COLORS
+
+### Cactus Wealth Color Palette
+Apply these exact colors from [context.md](mdc:context.md):
+
+```css
+/* Primary Colors */
+--primary-green: #2E5339;      /* Growth, stability, main actions */
+--sage-green: #587B7F;         /* Secondary elements, calm trust */
+--cactus-bloom: #D4AC0D;       /* Accent, success, opportunities */
+--desert-sand: #F5F0E1;        /* Background, cards, containers */
+--charcoal: #343a40;           /* Primary text, high contrast */
+--desert-night: #1A202C;       /* Dark mode background */
+```
+
+### Usage Guidelines
+- **Primary Green (#2E5339)**: Main CTAs, navigation, headers
+- **Sage Green (#587B7F)**: Secondary buttons, borders, icons
+- **Cactus Bloom (#D4AC0D)**: Success states, positive metrics, alerts
+- **Desert Sand (#F5F0E1)**: Card backgrounds, subtle containers
+- **Charcoal (#343a40)**: Body text, dark text elements
+- **Desert Night (#1A202C)**: Dark mode, high-contrast backgrounds
+
+## FINANCIAL DATA PRESENTATION
+
+### Portfolio Metrics Display
+```tsx
+// ✅ Correct - Clear, professional financial data
+<Card className="bg-desert-sand border-sage-green">
+  <CardHeader>
+    <h3 className="text-charcoal font-semibold">Portfolio Value</h3>
+  </CardHeader>
+  <CardContent>
+    <div className="text-2xl font-bold text-primary-green">
+      ${totalValue.toLocaleString('en-US', { 
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2 
+      })}
+    </div>
+    <div className={`text-sm ${isPositive ? 'text-cactus-bloom' : 'text-red-500'}`}>
+      {isPositive ? '↗' : '↘'} {changePercent}% ({changePeriod})
+    </div>
+  </CardContent>
+</Card>
+```
+
+### Financial Tables
+- Always show currency with proper formatting: `$1,234,567.89`
+- Use color coding for gains/losses: Green for positive, Red for negative
+- Include percentage changes with directional arrows
+- Sort by most significant values by default
+- Provide clear column headers with units
+
+### Charts & Visualizations
+- Use professional, muted colors that align with brand
+- Include proper legends and axis labels
+- Show data sources and update timestamps
+- Implement responsive design for mobile viewing
+
+## LAYOUT PATTERNS
+
+### Dashboard Layouts
+```tsx
+// ✅ Standard dashboard structure
+<div className="min-h-screen bg-desert-sand">
+  <Header user={currentUser} />
+  <div className="flex">
+    <Sidebar role={userRole} />
+    <main className="flex-1 p-6">
+      <DashboardHeader title="Portfolio Overview" />
+      <MetricsGrid metrics={portfolioMetrics} />
+      <DataTable data={holdings} />
+    </main>
+  </div>
+</div>
+```
+
+### Card-Based Information Architecture
+- Group related financial data in cards
+- Use consistent spacing and shadows
+- Include clear headers and action buttons
+- Maintain visual hierarchy with typography
+
+## NAVIGATION & USER EXPERIENCE
+
+### Role-Based Navigation
+Different navigation based on user roles:
+
+```tsx
+// ADMIN - Full access
+const adminNavItems = [
+  'Dashboard', 'All Advisors', 'All Clients', 'Reports', 'Settings'
+];
+
+// SENIOR_ADVISOR - Team management
+const seniorNavItems = [
+  'Dashboard', 'My Clients', 'Team Clients', 'Reports', 'Templates'
+];
+
+// JUNIOR_ADVISOR - Individual focus
+const juniorNavItems = [
+  'Dashboard', 'My Clients', 'Reports', 'Profile'
+];
+```
+
+### Breadcrumb Navigation
+Always show clear navigation paths:
+```tsx
+<Breadcrumb>
+  <BreadcrumbItem>Dashboard</BreadcrumbItem>
+  <BreadcrumbItem>Clients</BreadcrumbItem>
+  <BreadcrumbItem current>John Smith Portfolio</BreadcrumbItem>
+</Breadcrumb>
+```
+
+## COMPONENT PATTERNS
+
+### Form Design for Financial Data
+```tsx
+// ✅ Professional financial form
+<form className="space-y-6 max-w-md">
+  <div>
+    <Label htmlFor="amount">Investment Amount</Label>
+    <Input
+      id="amount"
+      type="number"
+      step="0.01"
+      min="0"
+      placeholder="0.00"
+      className="text-right"
+      prefix="$"
+    />
+  </div>
+  <div>
+    <Label htmlFor="allocation">Asset Allocation (%)</Label>
+    <Input
+      id="allocation"
+      type="number"
+      min="0"
+      max="100"
+      className="text-right"
+      suffix="%"
+    />
+  </div>
+</form>
+```
+
+### Data Loading States
+```tsx
+// ✅ Professional loading indicators
+{isLoading ? (
+  <div className="flex items-center justify-center p-8">
+    <Spinner className="text-sage-green" />
+    <span className="ml-2 text-charcoal">Loading portfolio data...</span>
+  </div>
+) : (
+  <PortfolioTable data={portfolioData} />
+)}
+```
+
+### Error States
+```tsx
+// ✅ Clear, actionable error messages
+{error && (
+  <Alert variant="destructive" className="mb-4">
+    <AlertTriangle className="h-4 w-4" />
+    <AlertTitle>Unable to load portfolio data</AlertTitle>
+    <AlertDescription>
+      Please check your connection and try again. If the problem persists, contact support.
+      <Button variant="outline" onClick={retry} className="mt-2">
+        Retry
+      </Button>
+    </AlertDescription>
+  </Alert>
+)}
+```
+
+## ACCESSIBILITY & USABILITY
+
+### Financial Accessibility
+- Use high contrast ratios for financial data
+- Provide alternative text for charts and graphs
+- Include keyboard navigation for all interactive elements
+- Support screen readers with proper ARIA labels
+
+### Mobile Responsiveness
+- Design tables to work on mobile (horizontal scroll or stacked layout)
+- Ensure touch targets are large enough (44px minimum)
+- Maintain readability of financial data on small screens
+
+### Performance Guidelines
+- Lazy load heavy financial data tables
+- Implement virtual scrolling for large datasets
+- Use skeleton loaders for better perceived performance
+- Cache frequently accessed portfolio data
+
+## INTERACTION PATTERNS
+
+### Confirmation for Critical Actions
+```tsx
+// ✅ Always confirm destructive financial actions
+<AlertDialog>
+  <AlertDialogTrigger asChild>
+    <Button variant="destructive">Liquidate Position</Button>
+  </AlertDialogTrigger>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Confirm Liquidation</AlertDialogTitle>
+      <AlertDialogDescription>
+        This will sell all {shares} shares of {symbol} at market price.
+        This action cannot be undone.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction onClick={confirmLiquidation}>
+        Confirm Liquidation
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+### Toast Notifications
+Use appropriate toast types for financial operations:
+- **Success (Cactus Bloom)**: "Portfolio updated successfully"
+- **Warning (Orange)**: "Market data may be delayed"
+- **Error (Red)**: "Failed to execute trade"
+- **Info (Sage Green)**: "Report generation started"
+
+## TYPOGRAPHY HIERARCHY
+
+### Financial Data Typography
+```css
+/* Large financial figures */
+.financial-primary {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--primary-green);
+}
+
+/* Secondary metrics */
+.financial-secondary {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--charcoal);
+}
+
+/* Table data */
+.financial-table {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.875rem;
+}
+```
+
+### Professional Content Hierarchy
+1. **H1**: Page titles (e.g., "Portfolio Dashboard")
+2. **H2**: Section headers (e.g., "Asset Allocation")
+3. **H3**: Card titles (e.g., "Performance Summary")
+4. **Body**: Regular content and descriptions
+5. **Caption**: Data sources, timestamps, disclaimers
