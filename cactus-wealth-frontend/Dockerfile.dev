@@ -2,13 +2,14 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy package files
+# 🔥 OPTIMIZATION: Copy ONLY package files first for better caching
 COPY package.json package-lock.json* ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies - This layer will be cached unless package*.json change
+RUN npm ci
 
-# Copy source code
+# 🔥 OPTIMIZATION: Copy source code AFTER installing dependencies
+# This ensures dependency installation cache won't be invalidated by code changes
 COPY . .
 
 # Expose port
