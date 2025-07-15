@@ -1,0 +1,211 @@
+---
+alwaysApply: false
+---
+# 🚀 API Design Patterns for Cactus Wealth
+
+## FASTAPI ENDPOINT CONVENTIONS
+
+### URL Structure
+- Use plural nouns: `/api/v1/clients`, `/api/v1/portfolios`
+- Follow RESTful conventions:
+  - `GET /api/v1/clients` - List clients
+  - `POST /api/v1/clients` - Create client
+  - `GET /api/v1/clients/{id}` - Get specific client
+  - `PUT /api/v1/clients/{id}` - Update client
+  - `DELETE /api/v1/clients/{id}` - Delete client
+
+### Response Formats
+```python
+# Success Response
+{
+    "success": true,
+    "data": {...},
+    "message": "Operation completed successfully"
+}
+
+# Error Response
+{
+    "success": false,
+    "error": {
+        "code": "VALIDATION_ERROR",
+        "message": "Invalid input provided",
+        "details": {...}
+    }
+}
+
+# Paginated Response
+{
+    "success": true,
+    "data": [...],
+    "pagination": {
+        "page": 1,
+        "per_page": 20,
+        "total": 150,
+        "total_pages": 8
+    }
+}
+```
+
+### Status Codes
+- `200` - Success with data
+- `201` - Created successfully
+- `204` - Success with no content
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found
+- `422` - Unprocessable Entity (business logic errors)
+- `500` - Internal Server Error
+
+## ENDPOINT PATTERNS
+
+### Authentication Required
+Every endpoint (except health checks) must use:
+```python
+current_user: User = Depends(get_current_user)
+```
+
+### Database Session
+Always inject database session:
+```python
+db: Session = Depends(get_db)
+```
+
+### Role-Based Filtering
+Apply role-based data filtering in services:
+```python
+def get_clients_for_user(db: Session, user: User) -> List[Client]:
+    if user.role == UserRole.ADMIN:
+        return crud.get_all_clients(db)
+    elif user.role in [UserRole.SENIOR_ADVISOR, UserRole.JUNIOR_ADVISOR]:
+        return crud.get_clients_by_advisor(db, advisor_id=user.id)
+    else:
+        raise HTTPException(status_code=403, detail="Insufficient permissions")
+```
+
+### Error Handling
+Use consistent error responses:
+```python
+from fastapi import HTTPException
+
+# Business logic errors
+raise HTTPException(
+    status_code=422,
+    detail={
+        "code": "INSUFFICIENT_BALANCE",
+        "message": "Portfolio has insufficient balance for this operation"
+    }
+)
+
+# Validation errors are handled automatically by Pydantic
+```
+
+## SERVICE LAYER PATTERNS
+
+### Data Access Pattern
+Services should call CRUD functions, not access models directly:
+```python
+# ✅ Correct
+async def create_portfolio_service(
+    db: Session,
+    portfolio_data: PortfolioCreate,
+    current_user: User
+) -> Portfolio:
+    # Business logic here
+    return crud.create_portfolio(db, portfolio_data, advisor_id=current_user.id)
+
+# ❌ Incorrect - Don't access models directly in services
+def bad_service(db: Session):
+    return db.query(Portfolio).filter(...).all()
+```
+
+### Transaction Management
+Use database transactions for multi-step operations:
+```python
+from sqlalchemy import transaction
+
+async def transfer_funds_service(
+    db: Session,
+    transfer_data: FundTransfer,
+    current_user: User
+) -> TransferResult:
+    with db.begin():
+        # Multiple database operations
+        crud.debit_account(db, transfer_data.from_account, transfer_data.amount)
+        crud.credit_account(db, transfer_data.to_account, transfer_data.amount)
+        crud.create_transfer_record(db, transfer_data)
+    
+    return TransferResult(success=True)
+```
+
+## FRONTEND API CLIENT PATTERNS
+
+### Centralized API Client
+All API calls go through [lib/api.ts](mdc:cactus-wealth-frontend/lib/api.ts):
+```typescript
+// ✅ Correct
+const clients = await apiClient.getClients();
+
+// ❌ Incorrect - No direct fetch calls in components
+const response = await fetch('/api/v1/clients');
+```
+
+### Error Handling
+Consistent error handling in API client:
+```typescript
+try {
+    const data = await apiClient.getPortfolios();
+    return data;
+} catch (error) {
+    if (error.status === 401) {
+        // Redirect to login
+        router.push('/login');
+    } else {
+        // Show error message
+        toast.error(error.message);
+    }
+    throw error;
+}
+```
+
+### TypeScript Types
+Define types for all API responses in [types/index.ts](mdc:cactus-wealth-frontend/types/index.ts):
+```typescript
+export interface ApiResponse<T> {
+    success: boolean;
+    data: T;
+    message?: string;
+}
+
+export interface PaginatedResponse<T> extends ApiResponse<T[]> {
+    pagination: {
+        page: number;
+        per_page: number;
+        total: number;
+        total_pages: number;
+    };
+}
+```
+
+## TESTING PATTERNS
+
+### Backend Testing
+Test all service functions:
+```python
+def test_get_clients_for_advisor(db_session, sample_advisor, sample_clients):
+    clients = services.get_clients_for_user(db_session, sample_advisor)
+    assert len(clients) == 2
+    assert all(client.advisor_id == sample_advisor.id for client in clients)
+```
+
+### Frontend Testing
+Test API integration with mocked responses:
+```typescript
+// Mock the API client
+jest.mock('../lib/api', () => ({
+    getClients: jest.fn().mockResolvedValue({
+        success: true,
+        data: mockClients
+    })
+}));
+```

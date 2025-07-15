@@ -1,0 +1,72 @@
+# ⚡ Performance Budgets
+
+## Purpose
+Ensure optimal performance for financial applications requiring real-time data.
+
+## Scope
+Frontend bundle size, API response times, database query optimization.
+
+## Guidelines
+
+### 📦 Frontend Budgets
+- **Bundle size**: <500KB gzipped
+- **First contentful paint**: <1.5s
+- **Time to interactive**: <3s
+- **Lighthouse score**: >90
+
+### 🚀 API Performance
+- **Response time**: <200ms (95th percentile)
+- **Database queries**: <50ms each
+- **Concurrent users**: 1000+
+- **Memory usage**: <512MB per service
+
+### 🗄️ Database Optimization
+```sql
+-- ✅ Always use indexes for frequent queries
+CREATE INDEX idx_client_advisor ON clients(advisor_id);
+CREATE INDEX idx_portfolio_client ON portfolios(client_id);
+CREATE INDEX idx_positions_portfolio ON positions(portfolio_id);
+
+-- ✅ Composite indexes for common filters
+CREATE INDEX idx_client_status_advisor ON clients(status, advisor_id);
+```
+
+### ⚠️ Critical Thresholds
+- Database connection pool: max 20
+- API timeout: 30s
+- File upload: max 10MB
+- Pagination: max 100 items
+
+## Anti-patterns
+- ❌ N+1 queries in API endpoints
+- ❌ Large unoptimized images
+- ❌ Blocking synchronous operations
+- ❌ Missing database indexes
+
+## Examples
+
+```python
+# ✅ Optimized data fetching
+async def get_portfolio_with_positions(portfolio_id: int) -> Portfolio:
+    return await db.query(Portfolio)\
+        .options(selectinload(Portfolio.positions))\
+        .filter(Portfolio.id == portfolio_id)\
+        .first()
+```
+
+```tsx
+// ✅ Code splitting and lazy loading
+const PortfolioAnalysis = lazy(() => import('./PortfolioAnalysis'));
+
+const Dashboard: React.FC = () => {
+  return (
+    <Suspense fallback={<Skeleton />}>
+      <PortfolioAnalysis />
+    </Suspense>
+  );
+};
+```
+description:
+globs:
+alwaysApply: false
+---

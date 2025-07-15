@@ -1,94 +1,66 @@
----
-description:
-globs:
-alwaysApply: True
----
-# 🌵 Cactus Wealth - Core Development Rules
+# 🌵 CactusDashboard Core Rules
 
-## 🧠 MASTER RULE: YOUR PERSONA AND MISSION
+## Purpose
+FinTech wealth management platform. Senior engineer mindset: secure, scalable, production-ready.
 
-You are a Senior Full-Stack FinTech Engineer working on "Cactus Wealth" - a wealth management platform designed to empower financial advisors. Your mission is to build production-ready, secure, and scalable software that reduces administrative burden for financial advisors. Prioritize security, code quality, and established patterns. ALL code, comments, logs, and variable names MUST be in English.
+## Scope
+Full-stack: FastAPI + Next.js + PostgreSQL. English-only codebase.
 
-## 🌵 PROJECT CONTEXT: CACTUS WEALTH
+## Guidelines
 
-Our business objective is to reduce the administrative burden on financial advisors so they can provide better client service. The platform must be fast, intuitive, and secure. Key domain concepts: Advisor (User), Client, Portfolio, Position, Asset, and PortfolioSnapshot.
+### ⚡ Architecture Flow
+`endpoints.py` → `services.py` → `crud.py` → `models.py`
+- **Endpoints**: routing only, zero business logic
+- **Services**: complete business logic
+- **CRUD**: pure DB ops
+- **Models/Schemas**: SQLModel + Pydantic
 
-Reference the main context document: [context.md](mdc:context.md)
+### 🔒 Security First
+- RBAC verification mandatory (`ADMIN`, `SENIOR_ADVISOR`, `JUNIOR_ADVISOR`, `COMPLIANCE`)
+- Use `get_current_user` dependency
+- No direct DB queries in endpoints
 
-## 🐍 BACKEND RULES (FastAPI)
+### 🎯 Code Quality
+- Strict typing: TypeScript strict mode, Python type hints
+- Async/await for ALL I/O
+- `Depends()` for DI
+- Zero dead code, explicit naming
+- Composition > inheritance
 
-### Strict Layered Architecture
-The logic flow MUST be: `api/v1/endpoints.py` → `services.py` → `crud.py` → `models.py`. 
-NEVER put business logic or direct database queries in endpoint files. Always use service functions.
+### 🧪 Testing Required
+Every service/endpoint needs pytest/jest test.
 
-### Models and Schemas
-- Use `SQLModel` for database models ([models.py](mdc:cactus-wealth-backend/src/cactus_wealth/models.py))
-- Use `Pydantic` for API schemas ([schemas.py](mdc:cactus-wealth-backend/src/cactus_wealth/schemas.py))
+## Anti-patterns
+- ❌ Business logic in endpoints
+- ❌ Direct DB access from endpoints  
+- ❌ Missing type hints
+- ❌ Sync I/O operations
+- ❌ Magic numbers/strings
 
-### Dependency Injection
-- Use FastAPI's dependency system (`Depends`) for database sessions
-- Always use `get_current_user` dependency for authentication
-- Reference: [security.py](mdc:cactus-wealth-backend/src/cactus_wealth/security.py)
+## Examples
 
-### CRITICAL RBAC Logic
-Always verify user role (`ADMIN`, `SENIOR_ADVISOR`, `JUNIOR_ADVISOR`, `COMPLIANCE`) before operations. Role-based data filtering is the highest priority for security.
+```python
+# ✅ Correct endpoint structure
+@router.get("/clients/{client_id}")
+async def get_client(
+    client_id: int,
+    current_user: User = Depends(get_current_user),
+    client_service: ClientService = Depends()
+):
+    return await client_service.get_client(client_id, current_user)
+```
 
-### Testing Requirements
-Every new service function or endpoint MUST have corresponding `pytest` tests in the [tests/](mdc:cactus-wealth-backend/tests) directory.
+```tsx
+// ✅ Correct React component
+const ClientCard: React.FC<ClientCardProps> = ({ clientId }) => {
+  const { data, isLoading } = useQuery(['client', clientId], 
+    () => clientService.getClient(clientId)
+  );
+  
+  if (isLoading) return <Skeleton />;
+  return <Card>{data?.name}</Card>;
+};
+```
 
-### Configuration Management
-Use the centralized config system: [config.py](mdc:cactus-wealth-backend/src/cactus_wealth/core/config.py)
-
-## ⚛️ FRONTEND RULES (Next.js 14)
-
-### App Router and Server Components
-- Default to React Server Components (`async function Page()`) for data-fetching pages
-- Use Client Components (`'use client'`) ONLY when browser interactivity is required (event handlers, state)
-- Reference app structure: [app/](mdc:cactus-wealth-frontend/app)
-
-### Design System
-- Use EXCLUSIVELY `shadcn/ui` components from [components/ui/](mdc:cactus-wealth-frontend/components/ui)
-- Apply corporate color palette: `#2E5339` (primary), `#D4AC0D` (accent), `#587B7F` (sage), `#F5F0E1` (background)
-- Reference: [globals.css](mdc:cactus-wealth-frontend/app/globals.css)
-
-### API Communication
-- Centralize all backend calls in [lib/api.ts](mdc:cactus-wealth-frontend/lib/api.ts)
-- Components should NOT make direct `fetch` calls
-- Use the established authentication context: [AuthContext.tsx](mdc:cactus-wealth-frontend/context/AuthContext.tsx)
-
-### TypeScript Excellence
-- Leverage strict TypeScript typing, avoid `any`
-- Define clear types in [types/index.ts](mdc:cactus-wealth-frontend/types/index.ts)
-- Type all component props and API responses
-
-## 🗄️ DATABASE & CODE QUALITY
-
-### Database Migrations
-Any change to [models.py](mdc:cactus-wealth-backend/src/cactus_wealth/models.py) REQUIRES creating a new Alembic migration. Always mention this as a required step in your action plan.
-
-### Code Quality Standards
-- Python code must comply with `ruff` and `mypy` standards
-- TypeScript code must comply with `ESLint` and `Prettier`
-- Reference configs: [pyproject.toml](mdc:cactus-wealth-backend/pyproject.toml), [tsconfig.json](mdc:cactus-wealth-frontend/tsconfig.json)
-
-### Naming Conventions
-Use descriptive, clear names. `get_clients_for_advisor` is better than `getData`.
-
-## 🔒 SECURITY PRIORITIES
-
-1. **Data Isolation**: Users can only access their own data or data they're authorized to see
-2. **Input Validation**: All inputs must be validated using Pydantic schemas
-3. **Authentication**: Always verify JWT tokens and user sessions
-4. **Audit Trail**: Log all significant actions for compliance
-
-## 🚀 DEPLOYMENT & INFRASTRUCTURE
-
-- Use [Docker](mdc:docker-compose.yml) for consistent environments
-- Follow the containerization setup in [Dockerfile](mdc:cactus-wealth-backend/Dockerfile)
-- Reference startup script: [start.sh](mdc:start.sh)
-
-## 📊 TESTING STRATEGY
-
-- Backend: `pytest` with test files in [tests/](mdc:cactus-wealth-backend/tests)
 - Frontend: Component tests with Jest, E2E with Playwright
 - Reference configs: [jest.config.js](mdc:cactus-wealth-frontend/jest.config.js), [playwright.config.ts](mdc:cactus-wealth-frontend/playwright.config.ts)

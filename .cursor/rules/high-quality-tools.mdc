@@ -1,0 +1,99 @@
+# Regla de Herramientas de Alta Calidad — Optimización Automática
+
+## Principio Fundamental
+**Priorizar automáticamente herramientas de alta calidad y estándares de la industria para optimizar la ejecución de tareas, garantizando eficiencia máxima y confiabilidad en cada proceso.**
+
+## Jerarquía de Herramientas por Categoría
+
+### Búsqueda y Filtrado
+1. **ripgrep** (`rg`) - Primera opción para búsquedas de texto
+2. **fd** - Primera opción para búsquedas de archivos
+3. **fzf** - Para búsquedas interactivas y fuzzy finding
+4. **grep/find** - Solo como fallback si las anteriores no están disponibles
+
+### Listado y Navegación
+1. **eza** (o **exa**) - Para listados de archivos con mejor formato
+2. **bat** - Para visualización de archivos con sintaxis highlighting
+3. **ls/cat** - Solo como fallback básico
+
+### Procesamiento de Datos
+1. **jq** - Para procesamiento de JSON
+2. **yq** - Para procesamiento de YAML
+3. **sd** - Para reemplazos de texto (alternativa moderna a sed)
+4. **awk/sed** - Para casos específicos donde las herramientas modernas no aplican
+
+### Control de Versiones
+1. **delta** - Para diffs mejorados en git
+2. **lazygit** - Para interfaz git interactiva cuando sea apropiado
+3. **git** nativo - Base fundamental
+
+### Monitoreo y Performance
+1. **htop/btop** - Para monitoreo de procesos
+2. **hyperfine** - Para benchmarking de comandos
+3. **tokei** - Para análisis de líneas de código
+
+## Reglas de Implementación
+
+### Detección Automática
+- Verificar disponibilidad de herramientas antes de uso
+- Implementar fallbacks graceful a herramientas estándar
+- Documentar qué herramienta se está usando y por qué
+
+### Configuración Óptima
+- Usar flags de performance por defecto (`rg --smart-case`, `fd --hidden`)
+- Configurar aliases y shortcuts para herramientas frecuentes
+- Mantener configuraciones consistentes entre proyectos
+
+### Validación de Calidad
+- Priorizar herramientas con:
+  - Mantenimiento activo (commits recientes)
+  - Amplia adopción en la comunidad
+  - Documentación completa
+  - Performance superior demostrable
+
+### Casos de Uso Específicos
+
+#### Para Búsquedas de Código
+```bash
+# Prioridad 1: ripgrep con flags optimizados
+rg --smart-case --type-add 'web:*.{html,css,js,ts,tsx,jsx}' --type web "pattern"
+
+# Prioridad 2: grep con flags básicos (fallback)
+grep -r --include="*.ts" --include="*.tsx" "pattern" .
+```
+
+#### Para Listados de Archivos
+```bash
+# Prioridad 1: eza con formato mejorado
+eza --long --header --git --icons
+
+# Prioridad 2: ls con flags estándar (fallback)
+ls -la --color=auto
+```
+
+#### Para Análisis de Archivos
+```bash
+# Prioridad 1: bat con sintaxis highlighting
+bat --style=numbers,changes,header filename
+
+# Prioridad 2: cat básico (fallback)
+cat filename
+```
+
+## Métricas de Éxito
+- **Performance**: Comandos 2-10x más rápidos que alternativas básicas
+- **Confiabilidad**: 99.9% de comandos ejecutados sin errores
+- **Consistencia**: Uso estandarizado de herramientas a través de todos los proyectos
+- **Mantenibilidad**: Configuraciones documentadas y versionadas
+
+## Excepciones Permitidas
+- Entornos restrictivos donde herramientas modernas no están disponibles
+- Scripts legacy que requieren compatibilidad específica
+- Casos donde herramientas básicas son explícitamente requeridas por el contexto
+
+## Objetivo Final
+Garantizar que cada comando ejecutado utilice la herramienta más eficiente y confiable disponible, optimizando automáticamente el flujo de trabajo sin intervención manual.
+description:
+globs:
+alwaysApply: false
+---

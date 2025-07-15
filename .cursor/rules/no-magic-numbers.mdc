@@ -1,0 +1,105 @@
+# 🎭 No Magic Numbers/Strings
+
+## Purpose
+Improve code readability and maintainability by eliminating unexplained constants.
+
+## Scope
+All hardcoded values except obvious ones (0, 1, 100 for percentages).
+
+## Guidelines
+
+### 📊 Financial Constants
+```python
+# ✅ Named constants
+TRADING_FEE_PERCENTAGE = 0.0075  # 0.75%
+MIN_INVESTMENT_AMOUNT = 1000.0
+MAX_PORTFOLIO_ALLOCATION = 1.0   # 100%
+RISK_FREE_RATE = 0.03           # 3%
+
+# ❌ Magic numbers
+if amount < 1000:  # What's special about 1000?
+    raise ValueError("Amount too low")
+```
+
+### 🔢 Database Limits
+```python
+# ✅ Clear naming
+PAGINATION_DEFAULT_LIMIT = 20
+PAGINATION_MAX_LIMIT = 100
+CLIENT_NAME_MAX_LENGTH = 150
+PHONE_NUMBER_LENGTH = 15
+
+# ❌ Magic numbers in queries
+.limit(20)  # Why 20?
+```
+
+### ⏰ Time Constants
+```python
+# ✅ Explicit time values
+SESSION_TIMEOUT_MINUTES = 30
+CACHE_TTL_SECONDS = 300  # 5 minutes
+MARKET_DATA_REFRESH_INTERVAL = 60  # 1 minute
+
+# ❌ Unclear durations
+time.sleep(300)  # How long is this?
+```
+
+### 🎨 UI Constants
+```tsx
+// ✅ Named UI constants
+const CARD_BORDER_RADIUS = 8;
+const SIDEBAR_WIDTH = 256;
+const MOBILE_BREAKPOINT = 768;
+
+// ❌ Magic CSS values
+className="w-64"  // Why 64?
+```
+
+## Anti-patterns
+- ❌ Hardcoded IDs or status codes
+- ❌ Unexplained mathematical constants
+- ❌ Magic string comparisons
+- ❌ Arbitrary limits without context
+
+## Examples
+
+```python
+# ✅ Well-defined constants
+class UserRole:
+    ADMIN = "ADMIN"
+    SENIOR_ADVISOR = "SENIOR_ADVISOR"
+    JUNIOR_ADVISOR = "JUNIOR_ADVISOR"
+    COMPLIANCE = "COMPLIANCE"
+
+class PortfolioStatus:
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    PENDING = "pending"
+
+# ✅ Business rules as constants
+MINIMUM_DIVERSIFICATION_HOLDINGS = 5
+MAXIMUM_SINGLE_POSITION_PERCENTAGE = 0.20  # 20%
+REBALANCING_THRESHOLD_PERCENTAGE = 0.05    # 5%
+```
+
+```tsx
+// ✅ UI configuration
+const UI_CONFIG = {
+  ANIMATION_DURATION: 200,
+  DEBOUNCE_DELAY: 300,
+  TOAST_TIMEOUT: 5000,
+  CHART_DEFAULT_HEIGHT: 400
+} as const;
+
+// ✅ Form validation
+const VALIDATION_LIMITS = {
+  CLIENT_NAME_MIN: 2,
+  CLIENT_NAME_MAX: 100,
+  INVESTMENT_MIN: 1000,
+  INVESTMENT_MAX: 10_000_000
+} as const;
+```
+description:
+globs:
+alwaysApply: false
+---

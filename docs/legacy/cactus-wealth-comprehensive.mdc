@@ -1,7 +1,5 @@
 ---
-description:
-globs:
-alwaysApply: True
+alwaysApply: false
 ---
 # 🌵 Cactus Wealth - Comprehensive Development Constitution
 

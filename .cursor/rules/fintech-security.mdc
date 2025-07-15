@@ -1,7 +1,5 @@
 ---
-description:
-globs:
-alwaysApply: True
+alwaysApply: false
 ---
 # 🔒 FinTech Security Rules for Cactus Wealth
 
