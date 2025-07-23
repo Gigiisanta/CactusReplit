@@ -20,13 +20,16 @@ class Settings(BaseSettings):
 
     # API settings
     API_V1_STR: str = "/api/v1"
-    ALLOWED_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    ALLOWED_ORIGINS: List[str] = [
+        os.getenv("FRONTEND_URL", "http://localhost:3000"),
+        "http://localhost:8000"
+    ]
 
     # Database settings
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "postgresql://cactus_user:cactus_pass@db:5432/cactus_wealth")
+    DATABASE_URL: str = os.getenv("REPLIT_DB_URL", os.getenv("DATABASE_URL", "postgresql://cactus_user:cactus_pass@localhost:5432/cactus_wealth"))
 
     # Redis settings for caching
-    REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_URL: str = os.getenv("REPLIT_REDIS_URL", os.getenv("REDIS_URL", "redis://localhost:6379/0"))
     REDIS_TTL: int = 300  # 5 minutes default TTL
 
     # Security settings

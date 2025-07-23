@@ -178,3 +178,16 @@ Proprietary - Cactus Wealth Management
 ---
 
 Built with ❤️ by the Cactus Wealth team
+
+## 🚀 Deploy en Replit
+
+1. Define la variable de entorno `NEXT_PUBLIC_API_URL` en el panel de Secrets de Replit, apuntando a la URL pública de tu backend (por ejemplo, `https://<tu-backend-replit-url>/api/v1`).
+2. Si usas autenticación o endpoints protegidos, asegúrate de que CORS esté configurado correctamente en el backend.
+3. Inicia la app normalmente en Replit.
+
+## Quality & Testing
+
+- `npm run lint` — Lint all frontend code
+- `npm run type-check` — Type-check all TypeScript code
+- `npm run test` — Run all unit tests
+- `npm run e2e` — Run all Playwright E2E tests

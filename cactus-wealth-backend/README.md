@@ -46,4 +46,20 @@ cactus-wealth-backend/
 │           └── config.py
 ├── main.py
 └── pyproject.toml
-``` 
+```
+
+## Quality & Testing
+
+- `pytest` — Run all backend tests
+- `ruff .` — Lint all Python code
+- `mypy .` — Type-check all Python code
+
+## Replit Deployment
+
+Set the following environment variables in your Replit project:
+
+- `REPLIT_DB_URL` (e.g. `postgresql://user:pass@ep-...-us-east-2.aws.neon.tech:5432/dbname`)
+- `REPLIT_REDIS_URL` (if using Redis, e.g. `redis://...`)
+- `FRONTEND_URL` (e.g. `https://<tu-frontend-replit-url>`)
+
+If running locally, fallback is `DATABASE_URL` and `REDIS_URL` (defaults to localhost). 
