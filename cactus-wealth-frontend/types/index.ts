@@ -32,10 +32,24 @@ export enum RiskProfile {
 export enum ClientStatus {
   PROSPECT = 'prospect',
   CONTACTED = 'contacted',
-  ONBOARDING = 'onboarding',
+  FIRST_MEETING = 'first_meeting',
+  SECOND_MEETING = 'second_meeting',
+  OPENING = 'opening',
+  RESCHEDULE = 'reschedule',
   ACTIVE_INVESTOR = 'active_investor',
   ACTIVE_INSURED = 'active_insured',
   DORMANT = 'dormant',
+}
+
+export enum ActivityType {
+  STATUS_CHANGE = 'status_change',
+  NOTE_ADDED = 'note_added',
+  MEETING_SCHEDULED = 'meeting_scheduled',
+  MEETING_COMPLETED = 'meeting_completed',
+  PROPOSAL_SENT = 'proposal_sent',
+  DOCUMENT_UPLOADED = 'document_uploaded',
+  CALL_MADE = 'call_made',
+  EMAIL_SENT = 'email_sent',
 }
 
 export enum LeadSource {
@@ -84,10 +98,12 @@ export interface Client {
   first_name: string;
   last_name: string;
   email: string;
+  phone?: string;
   risk_profile: RiskProfile;
   status: ClientStatus;
   lead_source?: LeadSource;
   notes?: string;
+  live_notes?: string;
   portfolio_name?: string;
   referred_by_client_id?: number;
   owner_id: number;
@@ -103,6 +119,7 @@ export interface ClientCreate {
   first_name: string;
   last_name: string;
   email: string;
+  phone?: string;
   risk_profile: RiskProfile;
   status?: ClientStatus;
   lead_source?: LeadSource;
@@ -115,10 +132,12 @@ export interface ClientUpdate {
   first_name?: string;
   last_name?: string;
   email?: string;
+  phone?: string;
   risk_profile?: RiskProfile;
   status?: ClientStatus;
   lead_source?: LeadSource;
   notes?: string;
+  live_notes?: string;
   portfolio_name?: string;
   referred_by_client_id?: number;
 }
@@ -253,4 +272,16 @@ export interface SectorAllocationData {
   value: number;
   assets: string[];
   color?: string;
+}
+
+// ClientActivity types
+export interface ClientActivity {
+  id: number;
+  client_id: number;
+  activity_type: ActivityType;
+  description: string;
+  extra_data?: string;
+  created_at: string;
+  created_by: number;
+  creator?: User;
 }

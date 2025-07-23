@@ -1,0 +1,186 @@
+{
+  "name": "Customer Onboarding - Cactus Wealth",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-onboarding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Twenty CRM Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "webhookId": "customer-onboarding-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.data.stage}}",
+              "operation": "equal",
+              "value2": "WON"
+            }
+          ]
+        }
+      },
+      "id": "check-if-won",
+      "name": "Check if Customer Won",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "message": ":tada: New Customer Alert!\n\n*{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"firstName\"]}} {{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"lastName\"]}}* just became an active customer!\n\n:email: {{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"email\"]}}\n:chart_with_upwards_trend: Status: Won\n\nTime to start the onboarding process! :rocket:",
+        "channel": "#sales-alerts",
+        "username": "CactusBot"
+      },
+      "id": "slack-notification",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 1,
+      "position": [600, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "slack-credentials",
+          "name": "Slack - Cactus Wealth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"email\"]}}",
+        "subject": "Welcome to Cactus Wealth - Let's Start Your Investment Journey!",
+        "emailFormat": "html",
+        "message": "<!DOCTYPE html>\n<html>\n<head>\n    <style>\n        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }\n        .header { background: #2E8B57; color: white; padding: 20px; text-align: center; }\n        .content { padding: 30px; }\n        .cta-button { background: #2E8B57; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; margin: 20px 0; }\n        .footer { background: #f4f4f4; padding: 20px; text-align: center; font-size: 0.9em; }\n    </style>\n</head>\n<body>\n    <div class=\"header\">\n        <h1>🌵 Welcome to Cactus Wealth!</h1>\n    </div>\n    \n    <div class=\"content\">\n        <h2>Hello {{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"firstName\"]}}!</h2>\n        \n        <p>We're thrilled to welcome you to the Cactus Wealth family! Your journey towards financial growth and prosperity starts now.</p>\n        \n        <h3>What's Next?</h3>\n        <ul>\n            <li>📋 Complete your investor profile</li>\n            <li>📊 Review your personalized portfolio recommendations</li>\n            <li>💼 Schedule a call with your dedicated advisor</li>\n            <li>🚀 Start investing with confidence</li>\n        </ul>\n        \n        <a href=\"https://app.cactuswealth.com/onboarding\" class=\"cta-button\">Complete Your Onboarding →</a>\n        \n        <p>If you have any questions, don't hesitate to reach out to our team. We're here to help you succeed!</p>\n        \n        <p>Best regards,<br>\nThe Cactus Wealth Team</p>\n    </div>\n    \n    <div class=\"footer\">\n        <p>Cactus Wealth | Growing Your Financial Future</p>\n        <p>📧 support@cactuswealth.com | 📞 +1 (555) 123-GROW</p>\n    </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "id": "welcome-email",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [600, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "gmail-credentials",
+          "name": "Gmail - Cactus Wealth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://sync_bridge:8001/events/cactus",
+        "sendBody": true,
+        "bodyContentType": "json",
+        "jsonBody": "{\n  \"event\": \"customer.onboarding_started\",\n  \"payload\": {\n    \"twenty_id\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"id\"]}}\",\n    \"email\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"email\"]}}\",\n    \"full_name\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"firstName\"]}} {{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"lastName\"]}}\",\n    \"stage\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"stage\"]}}\",\n    \"timestamp\": \"{{$now}}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "sync-to-cactus",
+      "name": "Notify Cactus CRM",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"success\",\n  \"message\": \"Customer onboarding workflow completed\",\n  \"customer\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"firstName\"]}} {{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"lastName\"]}}\",\n  \"actions_taken\": [\n    \"Slack notification sent\",\n    \"Welcome email delivered\",\n    \"Cactus CRM notified\"\n  ]\n}"
+      },
+      "id": "response-node",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"ignored\",\n  \"message\": \"Customer not in WON stage, onboarding not triggered\",\n  \"current_stage\": \"{{$node[\"Twenty CRM Webhook\"].json[\"data\"][\"stage\"]}}\"\n}"
+      },
+      "id": "response-ignored",
+      "name": "Not Won - Ignored",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [600, 500]
+    }
+  ],
+  "connections": {
+    "Twenty CRM Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check if Customer Won",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check if Customer Won": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Not Won - Ignored",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Slack Alert": {
+      "main": [
+        [
+          {
+            "node": "Notify Cactus CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Notify Cactus CRM",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Cactus CRM": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1.0.0",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+} 

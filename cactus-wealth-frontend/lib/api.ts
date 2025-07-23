@@ -77,18 +77,31 @@ class ApiClient {
 
   // Auth methods
   async login(credentials: LoginCredentials): Promise<Token> {
-    const formData = new FormData();
-    formData.append('username', credentials.username);
-    formData.append('password', credentials.password);
+    const params = new URLSearchParams();
+    params.append('username', credentials.username);
+    params.append('password', credentials.password);
+    params.append('grant_type', 'password');
+    params.append('scope', '');
+    params.append('client_id', '');
+    params.append('client_secret', '');
 
     const response = await fetch(`${this.baseURL}/login/access-token`, {
       method: 'POST',
-      body: formData,
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: params.toString(),
     });
 
     if (!response.ok) {
-      const errorData: ApiError = await response.json();
-      throw new Error(errorData.detail || 'Login failed');
+      let errorMsg = 'Login failed';
+      try {
+        const errorData = await response.json();
+        errorMsg = errorData.detail || JSON.stringify(errorData);
+      } catch (e) {
+        errorMsg = response.statusText || errorMsg;
+      }
+      throw new Error(errorMsg);
     }
 
     return await response.json();
@@ -103,23 +116,38 @@ class ApiClient {
 
   // Client methods (using interceptor for automatic auth)
   async getClients(): Promise<Client[]> {
-    return apiClientInterceptor.get<Client[]>('/clients/');
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<Client[]>('/clients/');
+    return response.data;
   }
 
   async getClient(clientId: number): Promise<Client> {
-    return apiClientInterceptor.get<Client>(`/clients/${clientId}`);
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<Client>(`/clients/${clientId}`);
+    return response.data;
   }
 
   async createClient(client: ClientCreate): Promise<Client> {
-    return apiClientInterceptor.post<Client>('/clients/', client);
+    const response = await apiClientInterceptor
+      .getClient()
+      .post<Client>('/clients/', client);
+    return response.data;
   }
 
   async updateClient(clientId: number, client: ClientUpdate): Promise<Client> {
-    return apiClientInterceptor.put<Client>(`/clients/${clientId}`, client);
+    const response = await apiClientInterceptor
+      .getClient()
+      .put<Client>(`/clients/${clientId}`, client);
+    return response.data;
   }
 
   async deleteClient(clientId: number): Promise<Client> {
-    return apiClientInterceptor.delete<Client>(`/clients/${clientId}`);
+    const response = await apiClientInterceptor
+      .getClient()
+      .delete<Client>(`/clients/${clientId}`);
+    return response.data;
   }
 
   // Portfolio methods
@@ -149,9 +177,22 @@ class ApiClient {
 
   // Dashboard methods (using interceptor for automatic auth)
   async getDashboardSummary(): Promise<DashboardSummaryResponse> {
-    return apiClientInterceptor.get<DashboardSummaryResponse>(
-      '/dashboard/summary'
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<DashboardSummaryResponse>('/dashboard/summary');
+    return response.data;
+  }
+
+  // 🚀 INSIGHT ANALYTICS: Get AUM historical data for charts
+  async getAumHistory(
+    days: number = 30
+  ): Promise<Array<{ date: string; value: number }>> {
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<
+        Array<{ date: string; value: number }>
+      >(`/dashboard/aum-history?days=${days}`);
+    return response.data;
   }
 
   // Report methods (using interceptor for automatic auth)
@@ -159,13 +200,16 @@ class ApiClient {
     clientId: number,
     reportType: string = 'PORTFOLIO_SUMMARY'
   ): Promise<ReportGenerationResponse> {
-    return apiClientInterceptor.post<ReportGenerationResponse>(
-      `/reports/clients/${clientId}/generate-report`,
-      {
-        client_id: clientId,
-        report_type: reportType,
-      }
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .post<ReportGenerationResponse>(
+        `/reports/clients/${clientId}/generate-report`,
+        {
+          client_id: clientId,
+          report_type: reportType,
+        }
+      );
+    return response.data;
   }
 
   // Investment Account methods
@@ -260,14 +304,28 @@ class ApiClient {
 
   // Notification methods (using interceptor for automatic auth)
   async getNotifications(limit: number = 10): Promise<Notification[]> {
-    return apiClientInterceptor.get<Notification[]>(
-      `/notifications?limit=${limit}`
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<Notification[]>(`/notifications?limit=${limit}`);
+    return response.data;
+  }
+
+  // 🚀 LIVE-OPS: Crear notificación de prueba
+  async createNotification(notification: {
+    message: string;
+  }): Promise<Notification> {
+    const response = await apiClientInterceptor
+      .getClient()
+      .post<Notification>('/notifications/', notification);
+    return response.data;
   }
 
   // Model Portfolio methods (using interceptor for automatic auth)
   async getModelPortfolios(): Promise<any[]> {
-    return apiClientInterceptor.get<any[]>('/model-portfolios/');
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<any[]>('/model-portfolios/');
+    return response.data;
   }
 
   async createModelPortfolio(portfolio: {
@@ -275,7 +333,10 @@ class ApiClient {
     description?: string;
     risk_profile: 'LOW' | 'MEDIUM' | 'HIGH';
   }): Promise<any> {
-    return apiClientInterceptor.post<any>('/model-portfolios/', portfolio);
+    const response = await apiClientInterceptor
+      .getClient()
+      .post<any>('/model-portfolios/', portfolio);
+    return response.data;
   }
 
   async updateModelPortfolio(
@@ -286,23 +347,35 @@ class ApiClient {
       risk_profile?: 'LOW' | 'MEDIUM' | 'HIGH';
     }
   ): Promise<any> {
-    return apiClientInterceptor.put<any>(`/model-portfolios/${portfolioId}`, portfolio);
+    const response = await apiClientInterceptor
+      .getClient()
+      .put<any>(`/model-portfolios/${portfolioId}`, portfolio);
+    return response.data;
   }
 
   async deleteModelPortfolio(portfolioId: number): Promise<any> {
-    return apiClientInterceptor.delete<any>(`/model-portfolios/${portfolioId}`);
+    const response = await apiClientInterceptor
+      .getClient()
+      .delete<any>(`/model-portfolios/${portfolioId}`);
+    return response.data;
   }
 
   // Get specific model portfolio with positions
   async getModelPortfolio(portfolioId: number): Promise<any> {
-    return apiClientInterceptor.get<any>(`/model-portfolios/${portfolioId}`);
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<any>(`/model-portfolios/${portfolioId}`);
+    return response.data;
   }
 
   // Asset search methods (using interceptor for automatic auth)
   async searchAssets(query: string, limit: number = 10): Promise<any[]> {
-    return apiClientInterceptor.get<any[]>(
-      `/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .get<
+        any[]
+      >(`/assets/search?query=${encodeURIComponent(query)}&limit=${limit}`);
+    return response.data;
   }
 
   // Model Portfolio Position methods (using interceptor for automatic auth)
@@ -313,7 +386,10 @@ class ApiClient {
       weight: number;
     }
   ): Promise<any> {
-    return apiClientInterceptor.post<any>(`/model-portfolios/${portfolioId}/positions`, position);
+    const response = await apiClientInterceptor
+      .getClient()
+      .post<any>(`/model-portfolios/${portfolioId}/positions`, position);
+    return response.data;
   }
 
   async updateModelPortfolioPosition(
@@ -323,19 +399,23 @@ class ApiClient {
       weight?: number;
     }
   ): Promise<any> {
-    return apiClientInterceptor.put<any>(
-      `/model-portfolios/${portfolioId}/positions/${positionId}`,
-      position
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .put<any>(
+        `/model-portfolios/${portfolioId}/positions/${positionId}`,
+        position
+      );
+    return response.data;
   }
 
   async deleteModelPortfolioPosition(
     portfolioId: number,
     positionId: number
   ): Promise<any> {
-    return apiClientInterceptor.delete<any>(
-      `/model-portfolios/${portfolioId}/positions/${positionId}`
-    );
+    const response = await apiClientInterceptor
+      .getClient()
+      .delete<any>(`/model-portfolios/${portfolioId}/positions/${positionId}`);
+    return response.data;
   }
 
   // Portfolio Backtesting methods (using interceptor for automatic auth)
@@ -365,8 +445,12 @@ class ApiClient {
     }>;
     performance_metrics: Record<string, number>;
   }> {
-    return apiClientInterceptor.post(`/portfolios/backtest`, request);
+    const response = await apiClientInterceptor
+      .getClient()
+      .post(`/portfolios/backtest`, request);
+    return response.data;
   }
 }
 
 export const apiClient = new ApiClient(API_BASE_URL);
+export { ApiClient };

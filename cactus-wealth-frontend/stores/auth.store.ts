@@ -12,6 +12,7 @@ interface AuthActions {
   login: (user: User, token: string) => void;
   logout: () => void;
   setUser: (user: User) => void;
+  clearStorage: () => void;
 }
 
 type AuthStore = AuthState & AuthActions;
@@ -26,6 +27,7 @@ export const useAuthStore = create<AuthStore>()(
 
       // Actions
       login: (user: User, token: string) => {
+        console.log('🔒 Auth store: Login successful');
         set({
           user,
           token,
@@ -34,15 +36,38 @@ export const useAuthStore = create<AuthStore>()(
       },
 
       logout: () => {
+        console.log('🔒 Auth store: Logout - clearing state');
         set({
           user: null,
           token: null,
           isAuthenticated: false,
         });
+
+        // Force clear localStorage as backup
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.removeItem('cactus-auth-storage');
+            console.log('🔒 Auth store: localStorage cleared');
+          } catch (error) {
+            console.error('Error clearing localStorage:', error);
+          }
+        }
       },
 
       setUser: (user: User) => {
         set({ user });
+      },
+
+      clearStorage: () => {
+        console.log('🔒 Auth store: Manually clearing storage');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cactus-auth-storage');
+        }
+        set({
+          user: null,
+          token: null,
+          isAuthenticated: false,
+        });
       },
     }),
     {
@@ -56,6 +81,9 @@ export const useAuthStore = create<AuthStore>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isAuthenticated = !!state.token;
+          if (state.token) {
+            console.log('🔒 Auth store: Token rehydrated from storage');
+          }
         }
       },
     }
@@ -63,4 +91,4 @@ export const useAuthStore = create<AuthStore>()(
 );
 
 // Export hook for easy consumption
-export const useAuth = useAuthStore; 
+export const useAuth = useAuthStore;

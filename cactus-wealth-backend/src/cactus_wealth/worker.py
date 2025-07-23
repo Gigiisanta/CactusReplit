@@ -1,177 +1,186 @@
 import asyncio
-import logging
+import json
 import os
-from datetime import timedelta
-from typing import Dict, Any
+from typing import Any
 
-from arq import create_pool
+import httpx
+import redis.asyncio as redis
+import structlog
 from arq.connections import RedisSettings
-from sqlmodel import Session, select
+from sqlmodel import SQLModel
 
-from cactus_wealth.database import engine
-from cactus_wealth.models import Portfolio
-from cactus_wealth.services import PortfolioService
-from cactus_wealth.core.dataprovider import get_market_data_provider
+# Clear metadata before any imports to prevent conflicts
+SQLModel.metadata.clear()
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
+# Configuration
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
+SYNC_BRIDGE_URL = os.getenv("SYNC_BRIDGE_URL", "http://sync_bridge:8001")
 
-async def create_all_snapshots(ctx: Dict[str, Any]) -> str:
-    """
-    Create snapshots for all portfolios in the system.
-    
-    This task is executed periodically to maintain up-to-date portfolio valuations
-    for KPI calculations like Monthly Growth.
-    
-    Args:
-        ctx: ARQ context dictionary containing database engine
-        
-    Returns:
-        Success message with snapshot count
-    """
-    logger.info("Starting daily portfolio snapshots creation")
-    snapshots_created = 0
-    errors = 0
-    
-    try:
-        # Get database engine from context
-        db_engine = ctx.get('engine', engine)
-        
-        # Create database session with proper context management
-        with Session(db_engine) as db_session:
-            # Get all portfolio IDs and names
-            statement = select(Portfolio.id, Portfolio.name)
-            portfolios = db_session.exec(statement).all()
-            
-            if not portfolios:
-                logger.warning("No portfolios found in the system")
-                return "No portfolios found to snapshot"
-            
-            logger.info(f"Found {len(portfolios)} portfolios to snapshot")
-            
-            # Initialize services with the session
-            market_data_provider = get_market_data_provider()
-            portfolio_service = PortfolioService(
-                db_session=db_session,
-                market_data_provider=market_data_provider
-            )
-            
-            # Create snapshots for each portfolio
-            for portfolio_id, portfolio_name in portfolios:
-                try:
-                    snapshot = portfolio_service.create_snapshot_for_portfolio(portfolio_id)
-                    snapshots_created += 1
-                    logger.info(
-                        f"✅ Snapshot created for portfolio '{portfolio_name}' (ID: {portfolio_id}): "
-                        f"Value=${snapshot.value}, Timestamp={snapshot.timestamp}"
-                    )
-                except Exception as e:
-                    errors += 1
-                    logger.error(
-                        f"❌ Failed to create snapshot for portfolio '{portfolio_name}' (ID: {portfolio_id}): {str(e)}"
-                    )
-            
-            # Commit all changes in a single transaction
-            db_session.commit()
-            
-            result_message = (
-                f"Successfully created {snapshots_created} snapshots, {errors} errors"
-            )
-            logger.info(result_message)
-            return result_message
-            
-    except Exception as e:
-        error_message = f"Critical error during snapshot creation: {str(e)}"
-        logger.error(error_message)
-        raise Exception(error_message)
+# HTTP client for sync bridge
+sync_client = httpx.AsyncClient(timeout=30.0)
 
 
-async def startup(ctx: Dict[str, Any]) -> None:
-    """
-    ARQ worker startup function.
-    
-    Initializes database engine in the worker context and schedules recurring tasks.
-    """
-    logger.info("🚀 ARQ Worker starting up...")
-    
-    # Store database engine in worker context for reuse
-    ctx['engine'] = engine
-    logger.info("📦 Database engine initialized in worker context")
-    
-    # Schedule the daily snapshot task
-    # This will run every 24 hours, starting 1 minute after startup for testing
-    await ctx['redis'].enqueue_job(
-        'create_all_snapshots',
-        _defer_by=timedelta(minutes=1),  # Start in 1 minute for testing
-        _job_id='daily_snapshot_job_initial'
-    )
-    
-    # Schedule recurring daily job
-    await ctx['redis'].enqueue_job(
-        'create_all_snapshots',
-        _defer_by=timedelta(hours=24),
-        _job_id='daily_snapshot_job_recurring'
-    )
-    
-    logger.info("📅 Daily snapshot jobs scheduled successfully")
+class EventWorker:
+    """ARQ worker for processing client events from outbox stream"""
 
+    def __init__(self) -> None:
+        self.redis_client = None
 
-async def shutdown(ctx: Dict[str, Any]) -> None:
-    """
-    ARQ worker shutdown function.
-    
-    Properly disposes of database connections.
-    """
-    logger.info("🛑 ARQ Worker shutting down...")
-    
-    # Dispose of database engine if it exists in context
-    if 'engine' in ctx:
+    async def startup(self) -> None:
+        """Initialize worker"""
+        self.redis_client = redis.from_url(REDIS_URL)
+        logger.info("EventWorker started")
+
+    async def shutdown(self) -> None:
+        """Cleanup worker"""
+        if self.redis_client:
+            await self.redis_client.close()
+        await sync_client.aclose()
+        logger.info("EventWorker stopped")
+
+    async def process_client_event(self, event_data: dict[str, Any]) -> bool:
+        """Process a single client event"""
         try:
-            await ctx['engine'].dispose()
-            logger.info("🗄️ Database engine disposed properly")
+            logger.info("Processing event", event_type=event_data.get("event"))
+
+            # Send to sync bridge
+            response = await sync_client.post(
+                f"{SYNC_BRIDGE_URL}/events",
+                json=event_data,
+                headers={"Content-Type": "application/json"},
+            )
+
+            if response.status_code in [200, 201]:
+                logger.info(
+                    "Event processed successfully",
+                    event_type=event_data.get("event"),
+                    status=response.status_code,
+                )
+                return True
+            else:
+                logger.error(
+                    "Sync bridge rejected event",
+                    event_type=event_data.get("event"),
+                    status=response.status_code,
+                    response=response.text,
+                )
+                return False
+
         except Exception as e:
-            logger.error(f"Error disposing database engine: {e}")
+            logger.error("Failed to process event", error=str(e))
+            return False
+
+    async def consume_outbox_stream(self) -> None:
+        """Continuously consume events from Redis stream"""
+        consumer_group = "event_workers"
+        consumer_name = f"worker-{os.getpid()}"
+
+        try:
+            # Create consumer group if it doesn't exist
+            try:
+                await self.redis_client.xgroup_create(
+                    "outbox", consumer_group, id="0", mkstream=True
+                )
+            except Exception as e:
+                logger.warning(f"Group creation failed: {e}")
+                # Group probably already exists
+
+            logger.info(
+                "Starting stream consumer", group=consumer_group, consumer=consumer_name
+            )
+
+            while True:
+                try:
+                    # Read messages from stream
+                    messages = await self.redis_client.xreadgroup(
+                        consumer_group,
+                        consumer_name,
+                        {"outbox": ">"},
+                        count=10,
+                        block=1000,  # 1 second timeout
+                    )
+
+                    for stream_name, stream_messages in messages:
+                        for message_id, fields in stream_messages:
+                            try:
+                                # Convert Redis hash to dict
+                                event_data = {
+                                    k.decode(): v.decode() for k, v in fields.items()
+                                }
+
+                                # Parse JSON fields
+                                if "payload" in event_data:
+                                    event_data["payload"] = json.loads(
+                                        event_data["payload"]
+                                    )
+                                if "metadata" in event_data:
+                                    event_data["metadata"] = json.loads(
+                                        event_data["metadata"]
+                                    )
+
+                                # Process the event
+                                success = await self.process_client_event(event_data)
+
+                                if success:
+                                    # Acknowledge message
+                                    await self.redis_client.xack(
+                                        "outbox", consumer_group, message_id
+                                    )
+                                    logger.debug(
+                                        "Message acknowledged", message_id=message_id
+                                    )
+                                else:
+                                    logger.warning(
+                                        "Event processing failed, will retry",
+                                        message_id=message_id,
+                                    )
+
+                            except Exception as e:
+                                logger.error(
+                                    "Failed to process message",
+                                    message_id=message_id,
+                                    error=str(e),
+                                )
+
+                except Exception as e:
+                    logger.error("Stream reading error", error=str(e))
+                    await asyncio.sleep(5)  # Back off on errors
+
+        except Exception as e:
+            logger.error("Fatal stream consumer error", error=str(e))
+            raise
 
 
+# ARQ worker function
+async def startup(ctx) -> None:
+    """ARQ startup function"""
+    worker = EventWorker()
+    await worker.startup()
+    ctx["worker"] = worker
+
+
+async def shutdown(ctx) -> None:
+    """ARQ shutdown function"""
+    worker = ctx.get("worker")
+    if worker:
+        await worker.shutdown()
+
+
+async def process_events(ctx) -> None:
+    """ARQ job function - consume outbox stream"""
+    worker = ctx["worker"]
+    await worker.consume_outbox_stream()
+
+
+# ARQ worker settings
 class WorkerSettings:
-    """ARQ Worker configuration."""
-    
-    # Redis connection settings
-    redis_settings = RedisSettings.from_dsn(
-        os.getenv('REDIS_URL', 'redis://localhost:6379')
-    )
-    
-    # Functions that can be executed by the worker
-    functions = [create_all_snapshots]
-    
-    # Worker startup and shutdown hooks
+    functions = [process_events]
     on_startup = startup
     on_shutdown = shutdown
-    
-    # Worker configuration
+    redis_settings = RedisSettings.from_dsn(REDIS_URL)
+    job_timeout = 300  # 5 minutes
+    keep_result = 3600  # 1 hour
     max_jobs = 10
-    job_timeout = 300  # 5 minutes timeout for jobs
-    keep_result = 3600  # Keep job results for 1 hour
-    
-    # Logging configuration
-    log_level = 'INFO'
-    
-    # Health check settings
     health_check_interval = 30
-
-
-# For manual testing and debugging
-async def test_snapshot_creation():
-    """Test function to manually trigger snapshot creation."""
-    logger.info("Testing snapshot creation...")
-    # Create a mock context with engine
-    test_ctx = {'engine': engine}
-    result = await create_all_snapshots(test_ctx)
-    logger.info(f"Test result: {result}")
-
-
-if __name__ == "__main__":
-    # For testing the worker manually
-    asyncio.run(test_snapshot_creation()) 

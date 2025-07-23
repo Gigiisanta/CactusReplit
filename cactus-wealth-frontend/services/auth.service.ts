@@ -1,6 +1,6 @@
 /**
  * 🚀 CLEAN ARCHITECTURE: Auth Service
- * 
+ *
  * Centralized service for all authentication-related API operations.
  * Components should use this service instead of direct apiClient calls.
  */
@@ -22,4 +22,4 @@ export class AuthService {
   static async register(userCreate: UserCreate): Promise<any> {
     return apiClient.register(userCreate);
   }
-} 
+}

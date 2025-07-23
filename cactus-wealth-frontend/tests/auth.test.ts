@@ -120,8 +120,9 @@ describe('Auth Store Persistence', () => {
 
     // Mock onRehydrateStorage callback
     const mockState = { ...rehydratedState, isAuthenticated: false };
-    const onRehydrateStorage = useAuthStore.persist.getOptions().onRehydrateStorage;
-    const callback = onRehydrateStorage?.();
+    const onRehydrateStorage =
+      useAuthStore.persist.getOptions().onRehydrateStorage;
+    const callback = onRehydrateStorage?.(mockState as any);
     callback?.(mockState as any);
 
     expect(mockState.isAuthenticated).toBe(true);
@@ -135,10 +136,11 @@ describe('Auth Store Persistence', () => {
 
     // Mock onRehydrateStorage callback
     const mockState = { ...rehydratedState, isAuthenticated: false };
-    const onRehydrateStorage = useAuthStore.persist.getOptions().onRehydrateStorage;
-    const callback = onRehydrateStorage?.();
+    const onRehydrateStorage =
+      useAuthStore.persist.getOptions().onRehydrateStorage;
+    const callback = onRehydrateStorage?.(mockState as any);
     callback?.(mockState as any);
 
     expect(mockState.isAuthenticated).toBe(false);
   });
-}); 
+});

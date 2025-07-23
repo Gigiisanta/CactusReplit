@@ -1,44 +1,86 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import { apiClient } from '@/lib/api';
 import { Client } from '@/types';
+import { useClient } from '@/context/ClientContext';
 import { ClientHeader } from './components/ClientHeader';
 import { ClientDetailsCard } from './components/ClientDetailsCard';
-import { InvestmentAccountsSection } from './components/InvestmentAccountsSection';
-import { InsurancePoliciesSection } from './components/InsurancePoliciesSection';
+import { LiveNotesSection } from './components/LiveNotesSection';
 import { ClientDetailPageSkeleton } from './components/ClientDetailsSkeleton';
+import { DeleteClientButton } from './components/DeleteClientButton';
+import { useClientDetailPage } from '@/hooks/useClientDetailPage';
+import { ClientNotesSection } from './components/ClientNotesSection';
 
 export default function ClientDetailPage() {
   const params = useParams();
   const clientId = params.clientId as string;
-  
-  const [client, setClient] = useState<Client | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    client,
+    isLoading,
+    error,
+    isEditing,
+    isSaving,
+    refreshClient,
+    handleEditStart,
+    handleEditCancel,
+    setActiveClient,
+    setIsEditing,
+    setIsSaving,
+    setClient,
+  } = useClientDetailPage(clientId);
+
+  const eventListenersAdded = useRef(false);
+
+  // Listen for save events from ClientDetailsCard
+  const handleSaveStart = useCallback(() => {
+    setIsSaving(true);
+  }, [setIsSaving]);
+
+  const handleSaveComplete = useCallback(() => {
+    setIsEditing(false);
+    setIsSaving(false);
+  }, [setIsEditing, setIsSaving]);
+
+  // Listen for global client update events
+  const handleClientUpdated = useCallback(
+    (event: any) => {
+      const { clientId: updatedClientId, updatedClient } = event.detail || {};
+      if (updatedClientId && updatedClientId.toString() === clientId) {
+        // Force refresh data from server
+        refreshClient();
+      }
+    },
+    [clientId, refreshClient]
+  );
 
   useEffect(() => {
-    fetchClient();
-  }, [clientId]);
-
-  const fetchClient = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const clientData = await apiClient.getClient(parseInt(clientId));
-      setClient(clientData);
-    } catch (error) {
-      console.error('Error fetching client:', error);
-      setError('Cliente no encontrado');
-    } finally {
-      setIsLoading(false);
+    // Only add event listeners once
+    if (!eventListenersAdded.current) {
+      window.addEventListener('client:saving', handleSaveStart);
+      window.addEventListener('client:saved', handleSaveComplete);
+      window.addEventListener('client:updated', handleClientUpdated);
+      eventListenersAdded.current = true;
     }
-  };
 
-  const refreshClient = () => {
-    fetchClient();
-  };
+    // Cleanup function
+    return () => {
+      if (eventListenersAdded.current) {
+        setActiveClient(null);
+        window.removeEventListener('client:saving', handleSaveStart);
+        window.removeEventListener('client:saved', handleSaveComplete);
+        window.removeEventListener('client:updated', handleClientUpdated);
+        eventListenersAdded.current = false;
+      }
+    };
+  }, [
+    clientId,
+    setActiveClient,
+    handleSaveStart,
+    handleSaveComplete,
+    handleClientUpdated,
+  ]);
 
   if (isLoading) {
     return <ClientDetailPageSkeleton />;
@@ -46,13 +88,17 @@ export default function ClientDetailPage() {
 
   if (error || !client) {
     return (
-      <div className="container mx-auto py-6">
-        <div className="text-center py-8">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Cliente no encontrado</h1>
-          <p className="text-gray-600 mb-4">No se pudo cargar la información del cliente.</p>
-          <button 
-            onClick={fetchClient}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      <div className='container mx-auto py-6'>
+        <div className='py-8 text-center'>
+          <h1 className='mb-2 text-2xl font-bold text-gray-900'>
+            Cliente no encontrado
+          </h1>
+          <p className='mb-4 text-gray-600'>
+            No se pudo cargar la información del cliente.
+          </p>
+          <button
+            onClick={refreshClient}
+            className='rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700'
           >
             Reintentar
           </button>
@@ -62,28 +108,47 @@ export default function ClientDetailPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <ClientHeader client={client} />
-      
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="md:col-span-1">
-          <ClientDetailsCard client={client} />
+    <div className='container mx-auto py-6'>
+      <ClientHeader
+        client={client}
+        onEditStart={handleEditStart}
+        onEditCancel={handleEditCancel}
+        isEditing={isEditing}
+        isSaving={isSaving}
+      />
+
+      <div className='grid gap-6 lg:grid-cols-5'>
+        {/* En pantallas pequeñas, las notas aparecen primero */}
+        <div className='space-y-6 lg:order-2 lg:col-span-2'>
+          <LiveNotesSection client={client} onClientUpdate={setClient} />
+          <ClientNotesSection
+            clientId={client.id}
+            onDataChange={refreshClient}
+          />
         </div>
-        
-        <div className="md:col-span-2 space-y-6">
-          <InvestmentAccountsSection 
-            clientId={client.id}
-            accounts={client.investment_accounts || []} 
+
+        <div className='space-y-6 lg:order-1 lg:col-span-3'>
+          <ClientDetailsCard
+            client={client}
+            onClientUpdate={setClient}
             onDataChange={refreshClient}
+            isEditing={isEditing}
+            onEditingChange={setIsEditing}
           />
-          
-          <InsurancePoliciesSection 
-            clientId={client.id}
-            policies={client.insurance_policies || []} 
-            onDataChange={refreshClient}
-          />
+
+          {/* Botón de eliminar cliente */}
+          {!isEditing && (
+            <div className='flex justify-end'>
+              <DeleteClientButton
+                client={client}
+                variant='outline'
+                size='sm'
+                className='w-full border-red-200 text-red-700 hover:bg-red-50'
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-} 
+}

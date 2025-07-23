@@ -1,29 +1,23 @@
-import { Inter } from 'next/font/google';
-import { AuthProvider } from '@/context/AuthContext';
-import { Toaster } from '@/components/ui/sonner';
-import { ClientLayoutWrapper } from '@/components/layout/client-layout-wrapper';
+import type { Metadata } from 'next';
+import { GeistSans } from 'geist/font/sans';
+import { GeistMono } from 'geist/font/mono';
 import './globals.css';
+import { ClientRoot } from '@/components/ClientRoot';
 
-const inter = Inter({ subsets: ['latin'] });
-
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Cactus Wealth Dashboard',
-  description:
-    'Professional wealth management dashboard for financial advisors',
+  description: 'Professional financial advisor dashboard',
 };
 
 export default function RootLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   return (
-    <html lang='en'>
-      <body className={inter.className}>
-        <AuthProvider>
-          <ClientLayoutWrapper>{children}</ClientLayoutWrapper>
-        </AuthProvider>
-        <Toaster richColors position="top-right" />
+    <html lang='en' className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className='antialiased'>
+        <ClientRoot>{children}</ClientRoot>
       </body>
     </html>
   );

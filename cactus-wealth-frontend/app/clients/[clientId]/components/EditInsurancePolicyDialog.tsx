@@ -2,7 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,11 +25,11 @@ interface EditInsurancePolicyDialogProps {
   }) => void;
 }
 
-export function EditInsurancePolicyDialog({ 
-  open, 
-  onOpenChange, 
+export function EditInsurancePolicyDialog({
+  open,
+  onOpenChange,
   policy,
-  onSubmit 
+  onSubmit,
 }: EditInsurancePolicyDialogProps) {
   const [formData, setFormData] = useState({
     policy_number: '',
@@ -48,7 +53,7 @@ export function EditInsurancePolicyDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.policy_number.trim()) {
       toast.error('El número de póliza es requerido');
       return;
@@ -79,6 +84,9 @@ export function EditInsurancePolicyDialog({
       });
     } catch (error) {
       console.error('Error submitting form:', error);
+      toast.error(
+        error instanceof Error ? error.message : 'Error al guardar la póliza'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -92,88 +100,102 @@ export function EditInsurancePolicyDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className='sm:max-w-[425px]'>
         <DialogHeader>
           <DialogTitle>Editar Póliza de Seguro</DialogTitle>
         </DialogHeader>
-        
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-policy_number">Número de Póliza *</Label>
+
+        <form onSubmit={handleSubmit} className='space-y-4'>
+          <div className='space-y-2'>
+            <Label htmlFor='edit-policy_number'>Número de Póliza *</Label>
             <Input
-              id="edit-policy_number"
-              placeholder="ej. POL-001-2024"
+              id='edit-policy_number'
+              placeholder='ej. POL-001-2024'
               value={formData.policy_number}
-              onChange={(e) => setFormData(prev => ({ ...prev, policy_number: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  policy_number: e.target.value,
+                }))
+              }
               required
               disabled={isSubmitting}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-insurance_type">Tipo de Seguro *</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='edit-insurance_type'>Tipo de Seguro *</Label>
             <Input
-              id="edit-insurance_type"
-              placeholder="ej. Seguro de Vida, Seguro de Retiro"
+              id='edit-insurance_type'
+              placeholder='ej. Seguro de Vida, Seguro de Retiro'
               value={formData.insurance_type}
-              onChange={(e) => setFormData(prev => ({ ...prev, insurance_type: e.target.value }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  insurance_type: e.target.value,
+                }))
+              }
               required
               disabled={isSubmitting}
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-premium_amount">Prima (USD) *</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='edit-premium_amount'>Prima (USD) *</Label>
             <Input
-              id="edit-premium_amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="0.00"
+              id='edit-premium_amount'
+              type='number'
+              step='0.01'
+              min='0.01'
+              placeholder='0.00'
               value={formData.premium_amount || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                premium_amount: parseFloat(e.target.value) || 0 
-              }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  premium_amount: parseFloat(e.target.value) || 0,
+                }))
+              }
               required
               disabled={isSubmitting}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className='text-xs text-muted-foreground'>
               Monto de la prima mensual o anual
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="edit-coverage_amount">Cobertura (USD) *</Label>
+          <div className='space-y-2'>
+            <Label htmlFor='edit-coverage_amount'>Cobertura (USD) *</Label>
             <Input
-              id="edit-coverage_amount"
-              type="number"
-              step="0.01"
-              min="0.01"
-              placeholder="0.00"
+              id='edit-coverage_amount'
+              type='number'
+              step='0.01'
+              min='0.01'
+              placeholder='0.00'
               value={formData.coverage_amount || ''}
-              onChange={(e) => setFormData(prev => ({ 
-                ...prev, 
-                coverage_amount: parseFloat(e.target.value) || 0 
-              }))}
+              onChange={(e) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  coverage_amount: parseFloat(e.target.value) || 0,
+                }))
+              }
               required
               disabled={isSubmitting}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className='text-xs text-muted-foreground'>
               Monto total de cobertura de la póliza
             </p>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
+          <div className='flex justify-end space-x-2 pt-4'>
             <Button
-              type="button"
-              variant="outline"
+              type='button'
+              variant='outline'
               onClick={handleClose}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type='submit' disabled={isSubmitting}>
               {isSubmitting ? 'Guardando...' : 'Guardar Cambios'}
             </Button>
           </div>
@@ -181,4 +203,4 @@ export function EditInsurancePolicyDialog({
       </DialogContent>
     </Dialog>
   );
-} 
+}

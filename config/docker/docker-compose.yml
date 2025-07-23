@@ -1,0 +1,220 @@
+services:
+  db:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cactus
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+    networks:
+      - cactus_network
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  backend:
+    build:
+      context: ./cactus-wealth-backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      REDIS_URL: redis://redis:6379
+      SYNC_BRIDGE_URL: http://sync_bridge:8001
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      PYTHONPATH: /app/src
+      DISABLE_RELOAD: "true"
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      - db
+      - redis
+    volumes:
+      - ./cactus-wealth-backend:/app
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  arq_worker:
+    build:
+      context: ./cactus-wealth-backend
+      dockerfile: Dockerfile
+    entrypoint: []
+    command: ["python", "-m", "arq", "cactus_wealth.worker.WorkerSettings"]
+    environment:
+      DATABASE_URL: postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      REDIS_URL: redis://redis:6379
+      SYNC_BRIDGE_URL: http://sync_bridge:8001
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      PYTHONPATH: /app/src
+      DISABLE_RELOAD: "true"
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      - db
+      - redis
+      - sync_bridge
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis; r=redis.Redis.from_url('redis://redis:6379'); r.ping()"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    volumes:
+      - ./cactus-wealth-backend:/app
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  frontend:
+    build:
+      context: ./cactus-wealth-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000/api/v1
+      NODE_ENV: production
+    depends_on:
+      - backend
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.5'
+
+  sync_bridge:
+    build:
+      context: ./sync-bridge
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      DATABASE_URL: postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: '0.25'
+        reservations:
+          memory: 128M
+          cpus: '0.1'
+
+  n8n:
+    image: n8nio/n8n:latest
+    ports:
+      - "5678:5678"
+    environment:
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: "admin"
+      N8N_BASIC_AUTH_PASSWORD: "admin123"
+      N8N_HOST: "0.0.0.0"
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: "http"
+      N8N_USER_MANAGEMENT_DISABLED: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_METRICS: "false"
+      N8N_LOG_LEVEL: "error"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - cactus_network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+
+  twenty_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: twenty_db
+      POSTGRES_USER: twenty_user
+      POSTGRES_PASSWORD: twenty_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - twenty_db_data:/var/lib/postgresql/data
+    networks:
+      - cactus_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U twenty_user -d twenty_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+
+  db_test:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: cactus_test
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+  postgres_test_data:
+  n8n_data:
+  twenty_db_data:
+
+networks:
+  cactus_network:
+    driver: bridge 

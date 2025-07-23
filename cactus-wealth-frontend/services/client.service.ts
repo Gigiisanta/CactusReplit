@@ -1,16 +1,16 @@
 /**
  * 🚀 CLEAN ARCHITECTURE: Client Service
- * 
+ *
  * Centralized service for all client-related API operations.
  * Components should use this service instead of direct apiClient calls.
  */
 
-import { 
-  Client, 
-  ClientCreate, 
-  ClientUpdate, 
-  InvestmentAccount, 
-  InsurancePolicy 
+import {
+  Client,
+  ClientCreate,
+  ClientUpdate,
+  InvestmentAccount,
+  InsurancePolicy,
 } from '@/types';
 import { apiClient } from '@/lib/api';
 
@@ -39,7 +39,10 @@ export class ClientService {
   /**
    * Update an existing client
    */
-  static async updateClient(clientId: number, clientData: ClientUpdate): Promise<Client> {
+  static async updateClient(
+    clientId: number,
+    clientData: ClientUpdate
+  ): Promise<Client> {
     return apiClient.updateClient(clientId, clientData);
   }
 
@@ -54,7 +57,7 @@ export class ClientService {
    * Investment Account Operations
    */
   static async createInvestmentAccount(
-    clientId: number, 
+    clientId: number,
     accountData: {
       platform: string;
       account_number?: string;
@@ -75,7 +78,9 @@ export class ClientService {
     return apiClient.updateInvestmentAccount(accountId, accountData);
   }
 
-  static async deleteInvestmentAccount(accountId: number): Promise<InvestmentAccount> {
+  static async deleteInvestmentAccount(
+    accountId: number
+  ): Promise<InvestmentAccount> {
     return apiClient.deleteInvestmentAccount(accountId);
   }
 
@@ -106,7 +111,9 @@ export class ClientService {
     return apiClient.updateInsurancePolicy(policyId, policyData);
   }
 
-  static async deleteInsurancePolicy(policyId: number): Promise<InsurancePolicy> {
+  static async deleteInsurancePolicy(
+    policyId: number
+  ): Promise<InsurancePolicy> {
     return apiClient.deleteInsurancePolicy(policyId);
   }
-} 
+}

@@ -1,0 +1,95 @@
+services:
+  # Sync Bridge Service
+  sync_bridge:
+    build:
+      context: ./sync-bridge
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      TWENTY_BASE_URL: http://twenty_server:3000/api
+      TWENTY_API_KEY: ${TWENTY_API_KEY:-}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://n8n:5678/webhook/customer-onboarding}
+      REDIS_URL: redis://redis:6379
+      PYTHONPATH: /app
+    depends_on:
+      - redis
+      - twenty_server
+    networks:
+      - cactus_network
+    volumes:
+      - ./sync-bridge:/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sync-bridge.rule=Host(`sync-bridge.localhost`)"
+
+  # Event Worker Service
+  event_worker:
+    build:
+      context: ./cactus-wealth-backend
+      dockerfile: Dockerfile
+    command: ["python", "-m", "arq", "cactus_wealth.worker.WorkerSettings"]
+    environment:
+      DATABASE_URL: postgresql://cactus_user:cactus_password@db:5432/cactus_db
+      REDIS_URL: redis://redis:6379
+      SYNC_BRIDGE_URL: http://sync_bridge:8001
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
+      SENDGRID_FROM_EMAIL: ${SENDGRID_FROM_EMAIL:-noreply@cactuswealth.com}
+      PYTHONPATH: /app/src
+    depends_on:
+      - redis
+      - sync_bridge
+      - db
+    networks:
+      - cactus_network
+    volumes:
+      - ./cactus-wealth-backend:/app
+    restart: unless-stopped
+    labels:
+      - "component=worker"
+      - "service=event-processor"
+
+  # Redis for event streaming
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - cactus_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Redis Commander (Development only)
+  redis_commander:
+    image: rediscommander/redis-commander:latest
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    networks:
+      - cactus_network
+    profiles:
+      - dev
+
+volumes:
+  redis_data:
+    driver: local
+
+networks:
+  cactus_network:
+    external: true 

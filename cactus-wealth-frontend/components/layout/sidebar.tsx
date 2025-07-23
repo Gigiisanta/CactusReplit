@@ -15,8 +15,12 @@ import {
   ChevronRight,
   TrendingUp,
   PieChart,
+  Zap,
+  Loader2,
 } from 'lucide-react';
 import DashboardRecentActivity from '@/app/dashboard/components/DashboardRecentActivity';
+import { useClient } from '@/context/ClientContext';
+import { apiClient } from '@/lib/api';
 
 interface SidebarProps {
   className?: string;
@@ -43,14 +47,39 @@ const navigationItems = [
     label: 'Analytics',
     icon: BarChart3,
   },
+  {
+    href: '/automations',
+    label: 'Automations',
+    icon: Zap,
+  },
 ];
 
 export function Sidebar({ className }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const pathname = usePathname();
+  const { activeClient } = useClient();
 
   const toggleSidebar = () => {
     setIsCollapsed(!isCollapsed);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!activeClient) return;
+
+    try {
+      setIsGeneratingReport(true);
+      const result = await apiClient.generateReport(activeClient.id);
+
+      if (result.success) {
+        alert('Reporte generado exitosamente');
+      }
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Error al generar el reporte');
+    } finally {
+      setIsGeneratingReport(false);
+    }
   };
 
   return (
@@ -107,6 +136,60 @@ export function Sidebar({ className }: SidebarProps) {
               </Link>
             );
           })}
+
+          {/* Client Actions Section */}
+          {activeClient && (
+            <div className='border-t border-gray-100 pb-2 pt-2'>
+              <Button
+                onClick={handleGenerateReport}
+                disabled={isGeneratingReport}
+                variant='ghost'
+                className={cn(
+                  'w-full transition-all duration-200',
+                  isCollapsed ? 'justify-center px-2' : 'justify-start'
+                )}
+                title={isCollapsed ? 'Generar Reporte' : undefined}
+              >
+                {isGeneratingReport ? (
+                  <Loader2
+                    className={cn(
+                      'h-4 w-4 animate-spin',
+                      !isCollapsed && 'mr-2'
+                    )}
+                  />
+                ) : (
+                  <FileText className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
+                )}
+                {!isCollapsed && (
+                  <span className='truncate'>
+                    {isGeneratingReport ? 'Generando...' : 'Generar Reporte'}
+                  </span>
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Demo Section */}
+          <div className='border-t border-gray-100 pt-2'>
+            {/* 🚀 LIVE-OPS Demo Link */}
+            <Link href='/dashboard/live-ops-demo' className='mb-2 block'>
+              <Button
+                variant='ghost'
+                className={cn(
+                  'w-full transition-all duration-200',
+                  isCollapsed ? 'justify-center px-2' : 'justify-start',
+                  pathname === '/dashboard/live-ops-demo' &&
+                    'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                )}
+                title={isCollapsed ? '🚀 Live-Ops Demo' : undefined}
+              >
+                <Zap className={cn('h-4 w-4', !isCollapsed && 'mr-2')} />
+                {!isCollapsed && (
+                  <span className='truncate'>🚀 Live-Ops Demo</span>
+                )}
+              </Button>
+            </Link>
+          </div>
 
           {/* External Links Section */}
           <div className='border-t border-gray-100 pt-2'>

@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
+import { ClientProvider } from '@/context/ClientContext';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
 
@@ -22,8 +23,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-cactus-500"></div>
+      <div className='flex min-h-screen items-center justify-center'>
+        <div className='h-32 w-32 animate-spin rounded-full border-b-2 border-cactus-500'></div>
       </div>
     );
   }
@@ -33,12 +34,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Header />
-      <div className="flex">
-        <Sidebar />
-        <main className="flex-1 p-6">{children}</main>
+    <ClientProvider>
+      <div className='min-h-screen bg-gray-50'>
+        <Header />
+        <div className='flex'>
+          <Sidebar />
+          <main className='flex-1 p-6'>{children}</main>
+        </div>
       </div>
-    </div>
+    </ClientProvider>
   );
-} 
+}

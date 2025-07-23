@@ -1,6 +1,6 @@
 /**
  * 🚀 CLEAN ARCHITECTURE: Portfolio Service
- * 
+ *
  * Centralized service for all portfolio-related API operations.
  * Components should use this service instead of direct apiClient calls.
  */
@@ -12,7 +12,9 @@ export class PortfolioService {
   /**
    * Get portfolio valuation data
    */
-  static async getPortfolioValuation(portfolioId: number): Promise<PortfolioValuation> {
+  static async getPortfolioValuation(
+    portfolioId: number
+  ): Promise<PortfolioValuation> {
     return apiClient.getPortfolioValuation(portfolioId);
   }
 
@@ -27,7 +29,7 @@ export class PortfolioService {
    * Generate portfolio report for a client
    */
   static async generateReport(
-    clientId: number, 
+    clientId: number,
     reportType: string = 'PORTFOLIO_SUMMARY'
   ): Promise<ReportGenerationResponse> {
     return apiClient.generateReport(clientId, reportType);
@@ -87,7 +89,11 @@ export class PortfolioService {
       weight?: number;
     }
   ): Promise<any> {
-    return apiClient.updateModelPortfolioPosition(portfolioId, positionId, positionData);
+    return apiClient.updateModelPortfolioPosition(
+      portfolioId,
+      positionId,
+      positionData
+    );
   }
 
   static async deleteModelPortfolioPosition(
@@ -135,4 +141,4 @@ export class PortfolioService {
   }> {
     return apiClient.backtestPortfolio(request);
   }
-} 
+}

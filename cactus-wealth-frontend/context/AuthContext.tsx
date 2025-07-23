@@ -1,47 +1,200 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/auth.store';
 import { apiClient } from '@/lib/api';
 import { UserRole, User } from '@/types';
+import { isTokenExpired, getTokenTimeRemaining } from '@/lib/token-utils';
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({
+  children,
+  apiClient: injectedApiClient,
+}: {
+  children: React.ReactNode;
+  apiClient?: typeof apiClient;
+}) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const tokenCheckInterval = useRef<NodeJS.Timeout | null>(null);
+
   const {
     login: zustandLogin,
     logout: zustandLogout,
     isAuthenticated,
+    token,
   } = useAuthStore();
   const router = useRouter();
 
+  const api = injectedApiClient || apiClient;
+
+  // Auto token validation and cleanup
   useEffect(() => {
-    // Initialize loading state - Zustand with persist will handle state restoration
-    setIsLoading(false);
+    const startTokenMonitoring = () => {
+      // Clear any existing interval
+      if (tokenCheckInterval.current) {
+        clearInterval(tokenCheckInterval.current);
+      }
+
+      // Check token every 30 seconds
+      tokenCheckInterval.current = setInterval(() => {
+        const currentToken = useAuthStore.getState().token;
+
+        if (currentToken) {
+          if (isTokenExpired(currentToken, 3)) {
+            // 3 minute buffer
+            console.warn(
+              '🔒 Token expired during monitoring, performing automatic logout'
+            );
+            handleAutoLogout();
+          } else {
+            const remaining = getTokenTimeRemaining(currentToken);
+            if (remaining <= 5) {
+              console.warn(`🔒 Token expires in ${remaining} minutes`);
+            }
+          }
+        }
+      }, 30000); // Check every 30 seconds
+    };
+
+    const stopTokenMonitoring = () => {
+      if (tokenCheckInterval.current) {
+        clearInterval(tokenCheckInterval.current);
+        tokenCheckInterval.current = null;
+      }
+    };
+
+    if (isAuthenticated && token) {
+      // Immediately check current token
+      if (isTokenExpired(token, 1)) {
+        console.warn(
+          '🔒 Found expired token on initialization, performing cleanup'
+        );
+        handleAutoLogout();
+        return;
+      }
+
+      startTokenMonitoring();
+    } else {
+      stopTokenMonitoring();
+    }
+
+    return () => stopTokenMonitoring();
+  }, [isAuthenticated, token]);
+
+  const handleAutoLogout = () => {
+    console.log('🔒 Performing automatic logout due to token expiry');
+
+    // Stop monitoring
+    if (tokenCheckInterval.current) {
+      clearInterval(tokenCheckInterval.current);
+      tokenCheckInterval.current = null;
+    }
+
+    // Clear auth state
+    zustandLogout();
+
+    // Clear localStorage as backup
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('cactus-auth-storage');
+
+      // Navigate to login
+      router.push('/login');
+    }
+  };
+
+  useEffect(() => {
+    // Initialize auth state from localStorage
+    const initializeAuth = () => {
+      try {
+        // Check if there's a stored auth state
+        const storedAuth = localStorage.getItem('cactus-auth-storage');
+        if (storedAuth) {
+          const { state } = JSON.parse(storedAuth);
+          if (state.token && state.user) {
+            // Check if stored token is expired
+            if (isTokenExpired(state.token, 1)) {
+              console.warn('🔒 Stored token is expired, clearing auth state');
+              localStorage.removeItem('cactus-auth-storage');
+              zustandLogout();
+            } else {
+              // Auth state exists and token is valid
+              setIsInitialized(true);
+              setIsLoading(false);
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error reading auth state:', error);
+        // Clear corrupted state
+        localStorage.removeItem('cactus-auth-storage');
+        zustandLogout();
+      }
+
+      // No valid auth state found
+      setIsInitialized(true);
+      setIsLoading(false);
+    };
+
+    initializeAuth();
 
     // Listen for storage changes (logout in other tabs)
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'cactus-auth-storage' && e.newValue === null) {
-        // Storage was cleared in another tab, logout here too
+        console.log('🔒 Logout detected in another tab');
         zustandLogout();
+        router.push('/login');
+      }
+    };
+
+    // Listen for auth logout events from API interceptor
+    const handleAuthLogout = () => {
+      console.log('🔒 Logout event received from API interceptor');
+      router.push('/login');
+    };
+
+    // Listen for page visibility changes to check token
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        const currentToken = useAuthStore.getState().token;
+        if (currentToken && isTokenExpired(currentToken, 1)) {
+          console.warn(
+            '🔒 Token expired while tab was hidden, performing logout'
+          );
+          handleAutoLogout();
+        }
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, [zustandLogout]);
+    window.addEventListener('auth:logout', handleAuthLogout);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth:logout', handleAuthLogout);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+
+      // Clear interval on cleanup
+      if (tokenCheckInterval.current) {
+        clearInterval(tokenCheckInterval.current);
+      }
+    };
+  }, [zustandLogout, router]);
 
   const login = async (username: string, password: string) => {
     try {
       setIsLoading(true);
-      const tokenResponse = await apiClient.login({
-        username: username,
-        password: password,
-      });
+      const tokenResponse = await api.login({ username, password });
 
       const { access_token } = tokenResponse;
 
-      // Create mock user object (in real app, decode JWT or fetch user data)
+      // Validate new token before storing
+      if (isTokenExpired(access_token, 0)) {
+        throw new Error('Received expired token from server');
+      }
+
       const mockUser: User = {
         id: 1,
         username: username,
@@ -53,14 +206,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clients: [],
       };
 
-      // Use Zustand login action
       zustandLogin(mockUser, access_token);
 
-      // Redirect to dashboard
+      console.log(
+        `✅ Login successful, token expires in ${getTokenTimeRemaining(access_token)} minutes`
+      );
+
       router.push('/dashboard');
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error;
+    } catch (error: any) {
+      // Mostrar mensaje legible
+      throw new Error(error?.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -74,16 +229,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ) => {
     try {
       setIsLoading(true);
-
-      // Create the user
-      await apiClient.register({
-        username,
-        email,
-        password,
-        role,
-      });
-
-      // After successful registration, automatically log in
+      const response = await api.register({ username, email, password, role });
       await login(username, password);
     } catch (error) {
       console.error('Registration error:', error);
@@ -93,36 +239,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
-    zustandLogout();
-    router.push('/login');
-  };
-
-  // Create a compatibility layer for existing components
-  const { user, token } = useAuthStore();
-  const authContextValue = {
-    user,
-    token,
-    isAuthenticated,
-    isLoading,
-    login,
-    register,
-    logout,
+  const logout = async () => {
+    console.log('🔒 Manual logout initiated');
+    handleAutoLogout();
   };
 
   return (
-    <AuthContext.Provider value={authContextValue}>
+    <AuthContext.Provider
+      value={{
+        login,
+        register,
+        logout,
+        user: useAuthStore((state) => state.user),
+        token: useAuthStore((state) => state.token),
+        isAuthenticated: useAuthStore((state) => state.isAuthenticated),
+        isLoading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Keep the existing context for backward compatibility during transition
-const AuthContext = React.createContext<any>(undefined);
+const AuthContext = React.createContext<{
+  login: (username: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    email: string,
+    password: string,
+    role: UserRole
+  ) => Promise<void>;
+  logout: () => Promise<void>;
+  user: User | null;
+  token: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+} | null>(null);
 
 export function useAuth() {
   const context = React.useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

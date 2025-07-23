@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import React from 'react';
 import {
   Card,
   CardContent,
@@ -11,59 +12,42 @@ import {
 import { apiClient } from '@/lib/api';
 import { Notification } from '@/types';
 
-function getRelativeTime(date: string): string {
-  const now = new Date();
-  const notificationDate = new Date(date);
-  const diffInMs = now.getTime() - notificationDate.getTime();
-  const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-  
-  if (diffInMinutes < 1) {
-    return 'Just now';
-  } else if (diffInMinutes < 60) {
-    return `${diffInMinutes} minutes ago`;
-  } else if (diffInMinutes < 1440) { // 24 hours
-    const hours = Math.floor(diffInMinutes / 60);
-    return `${hours} hour${hours > 1 ? 's' : ''} ago`;
-  } else {
-    const days = Math.floor(diffInMinutes / 1440);
-    return `${days} day${days > 1 ? 's' : ''} ago`;
-  }
-}
-
-function getNotificationColor(message: string): string {
-  if (message.includes('cliente añadido') || message.includes('Nuevo cliente')) {
-    return 'bg-blue-500';
-  } else if (message.includes('reporte') || message.includes('generado')) {
-    return 'bg-cactus-500';
-  } else if (message.includes('valoración') || message.includes('Valoración')) {
+function getStatusColor(status: string) {
+  if (status === 'success' || status === 'completed') {
     return 'bg-green-500';
+  } else if (status === 'error' || status === 'failed') {
+    return 'bg-red-500';
+  } else if (status === 'warning' || status === 'pending') {
+    return 'bg-yellow-500';
   } else {
     return 'bg-gray-500';
   }
 }
 
-export default function DashboardRecentActivity() {
+export default React.memo(function DashboardRecentActivity() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchNotifications = async () => {
-      try {
-        setLoading(true);
-        const data = await apiClient.getNotifications(10);
-        setNotifications(data);
-        setError(null);
-      } catch (error) {
-        console.error('Error fetching notifications:', error);
-        setError('Failed to load notifications');
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchNotifications();
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await apiClient.getNotifications(10);
+      // Ensure data is always an array
+      setNotifications(Array.isArray(data) ? data : []);
+      setError(null);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      setError('Failed to load notifications');
+      setNotifications([]); // Reset to empty array on error
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   if (loading) {
     return (
@@ -76,10 +60,10 @@ export default function DashboardRecentActivity() {
           <div className='space-y-3'>
             {[...Array(3)].map((_, i) => (
               <div key={i} className='flex items-center space-x-3'>
-                <div className='h-2 w-2 rounded-full bg-gray-300 animate-pulse'></div>
-                <div className='text-sm flex-1'>
-                  <div className='h-4 bg-gray-200 rounded animate-pulse mb-1'></div>
-                  <div className='h-3 bg-gray-100 rounded animate-pulse w-24'></div>
+                <div className='h-2 w-2 animate-pulse rounded-full bg-gray-300'></div>
+                <div className='flex-1 text-sm'>
+                  <div className='mb-1 h-4 animate-pulse rounded bg-gray-200'></div>
+                  <div className='h-3 w-24 animate-pulse rounded bg-gray-100'></div>
                 </div>
               </div>
             ))}
@@ -91,15 +75,13 @@ export default function DashboardRecentActivity() {
 
   if (error) {
     return (
-      <Card className='card-hover'>
+      <Card className='card-hover border-red-200 bg-red-50'>
         <CardHeader>
           <CardTitle className='text-cactus-700'>Recent Activity</CardTitle>
           <CardDescription>Latest updates and notifications</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className='text-center py-4'>
-            <p className='text-red-600 text-sm'>{error}</p>
-          </div>
+          <div className='text-sm text-red-600'>{error}</div>
         </CardContent>
       </Card>
     );
@@ -114,16 +96,23 @@ export default function DashboardRecentActivity() {
       <CardContent>
         <div className='space-y-3'>
           {notifications.length === 0 ? (
-            <div className='text-center py-4'>
-              <p className='text-gray-500 text-sm'>No recent activity</p>
+            <div className='text-center text-sm text-gray-500'>
+              No recent activity
             </div>
           ) : (
             notifications.map((notification) => (
-              <div key={notification.id} className='flex items-center space-x-3'>
-                <div className={`h-2 w-2 rounded-full ${getNotificationColor(notification.message)}`}></div>
-                <div className='text-sm flex-1'>
-                  <p className='font-medium'>{notification.message}</p>
-                  <p className='text-gray-500'>{getRelativeTime(notification.created_at)}</p>
+              <div
+                key={notification.id}
+                className='flex items-center space-x-3'
+              >
+                <div
+                  className={`h-2 w-2 rounded-full ${getStatusColor('info')}`}
+                ></div>
+                <div className='flex-1 text-sm'>
+                  <p className='text-gray-900'>{notification.message}</p>
+                  <p className='text-xs text-gray-500'>
+                    {new Date(notification.created_at).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
             ))
@@ -132,4 +121,4 @@ export default function DashboardRecentActivity() {
       </CardContent>
     </Card>
   );
-} 
+});

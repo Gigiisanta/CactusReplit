@@ -9,4 +9,4 @@ declare global {
       toHaveAttribute(name: string, value?: string): R;
     }
   }
-} 
+}

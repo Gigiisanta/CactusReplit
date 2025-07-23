@@ -15,9 +15,9 @@ import {
 import Link from 'next/link';
 
 export default function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [username, setUsername] = useState('demo');
+  const [password, setPassword] = useState('demo123');
+  const [error, setError] = useState<string | Error | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
 
@@ -81,7 +81,7 @@ export default function LoginPage() {
               </div>
               {error && (
                 <div className='rounded-md bg-red-50 p-2 text-center text-sm text-red-600'>
-                  {error}
+                  {typeof error === 'string' ? error : (error instanceof Error ? error.message : 'Login failed')}
                 </div>
               )}
               <Button

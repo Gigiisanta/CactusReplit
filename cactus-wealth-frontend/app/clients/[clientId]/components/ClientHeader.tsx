@@ -1,68 +1,108 @@
 'use client';
 
-import { ArrowLeft, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Calendar, X, Check, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import { Client } from '@/types';
 import { Button } from '@/components/ui/button';
-import { apiClient } from '@/lib/api';
+import { Badge } from '@/components/ui/badge';
 
 interface ClientHeaderProps {
   client: Client;
+  onEditStart: () => void;
+  onEditCancel: () => void;
+  isEditing: boolean;
+  isSaving: boolean;
 }
 
-export function ClientHeader({ client }: ClientHeaderProps) {
+export function ClientHeader({
+  client,
+  onEditStart,
+  onEditCancel,
+  isEditing,
+  isSaving,
+}: ClientHeaderProps) {
   const router = useRouter();
-  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
-  const handleGenerateReport = async () => {
-    try {
-      setIsGeneratingReport(true);
-      const result = await apiClient.generateReport(client.id);
-      
-      if (result.success) {
-        // Show success message or download file
-        alert('Reporte generado exitosamente');
-      }
-    } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Error al generar el reporte');
-    } finally {
-      setIsGeneratingReport(false);
-    }
+  const handleSaveClick = async () => {
+    // We need to get the form data from ClientDetailsCard
+    // For now, we'll trigger the save from ClientDetailsCard directly
+    const event = new CustomEvent('client:save');
+    window.dispatchEvent(event);
   };
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center space-x-4">
+    <div className='mb-6 flex items-center justify-between'>
+      <div className='flex items-center space-x-4'>
         <Button
-          variant="ghost"
-          size="sm"
+          variant='ghost'
+          size='sm'
           onClick={() => router.back()}
-          className="pl-0"
+          className='pl-0'
         >
-          <ArrowLeft className="h-4 w-4 mr-2" />
+          <ArrowLeft className='mr-2 h-4 w-4' />
           Volver
         </Button>
-        
+
         <div>
-          <h1 className="text-3xl font-bold">
+          <h1 className='text-3xl font-bold text-gray-900'>
             {client.first_name} {client.last_name}
           </h1>
-          <p className="text-muted-foreground">{client.email}</p>
+          <p className='text-gray-600'>{client.email}</p>
         </div>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Button
-          onClick={handleGenerateReport}
-          disabled={isGeneratingReport}
-          className="flex items-center space-x-2"
+      <div className='flex items-center space-x-3'>
+        <Badge
+          variant='outline'
+          className='border-purple-200 bg-purple-50 text-purple-700'
         >
-          <FileText className="h-4 w-4" />
-          <span>{isGeneratingReport ? 'Generando...' : 'Generar Reporte'}</span>
-        </Button>
+          <Calendar className='mr-1 h-3 w-3' />
+          Primera Reunión
+        </Badge>
+
+        {isEditing ? (
+          <div className='flex gap-2'>
+            <Button
+              variant='outline'
+              size='sm'
+              onClick={onEditCancel}
+              disabled={isSaving}
+              className='border-red-300 text-red-700 hover:bg-red-50'
+            >
+              <X className='mr-2 h-4 w-4' />
+              Cancelar
+            </Button>
+            <Button
+              size='sm'
+              onClick={handleSaveClick}
+              disabled={isSaving}
+              className='bg-cactus-600 hover:bg-cactus-700 disabled:opacity-60'
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className='mr-2 h-4 w-4 animate-spin' />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Check className='mr-2 h-4 w-4' />
+                  Guardar
+                </>
+              )}
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant='outline'
+            size='sm'
+            onClick={onEditStart}
+            className='border-gray-300 text-gray-700 hover:bg-gray-50'
+          >
+            <Edit className='mr-2 h-4 w-4' />
+            Editar
+          </Button>
+        )}
       </div>
     </div>
   );
-} 
+}

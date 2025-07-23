@@ -1,79 +1,54 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session
-
 from cactus_wealth import schemas
-from cactus_wealth.models import User, UserRole
+from cactus_wealth.core.dataprovider import MarketDataProvider, get_market_data_provider
 from cactus_wealth.database import get_session
+from cactus_wealth.models import User
 from cactus_wealth.security import get_current_user
 from cactus_wealth.services import DashboardService
-from cactus_wealth.core.dataprovider import get_market_data_provider
-from cactus_wealth.core.arq import ARQConfig
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session
 
 router = APIRouter()
 
 
-@router.get("/summary", response_model=schemas.DashboardSummaryResponse)
-async def get_dashboard_summary(
+def get_dashboard_service(
+    session: Session = Depends(get_session),
+    market_data_provider: MarketDataProvider = Depends(get_market_data_provider),
+) -> DashboardService:
+    """Dependency to get dashboard service."""
+    return DashboardService(
+        db_session=session, market_data_provider=market_data_provider
+    )
+
+
+@router.get("/summary")
+def get_dashboard_summary(
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_session)
+    dashboard_service: DashboardService = Depends(get_dashboard_service),
 ) -> schemas.DashboardSummaryResponse:
     """
-    Get dashboard summary with key performance indicators.
-    
-    Returns dashboard KPIs based on user role:
-    - ADMIN: Global data across all clients
-    - SENIOR_ADVISOR/JUNIOR_ADVISOR: Data for assigned clients only
-    
-    Returns:
-        DashboardSummaryResponse: Contains total_clients, assets_under_management, 
-                                 monthly_growth_percentage, and reports_generated_this_quarter
+    Get dashboard summary with key metrics.
     """
     try:
-        # Initialize market data provider and dashboard service
-        market_data_provider = get_market_data_provider()
-        dashboard_service = DashboardService(db, market_data_provider)
-        
-        # Calculate dashboard summary based on user permissions
         summary = dashboard_service.get_dashboard_summary(current_user)
-        
         return summary
-        
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to calculate dashboard summary: {str(e)}"
+            status_code=500, detail=f"Failed to calculate dashboard summary: {str(e)}"
         )
 
 
-@router.post("/debug/trigger-snapshots")
-async def trigger_snapshots_debug(
-    current_user: User = Depends(get_current_user)
-) -> dict:
+@router.get("/aum-history")
+def get_aum_history(
+    days: int = Query(30, ge=1, le=365, description="Number of days of history"),
+    current_user: User = Depends(get_current_user),
+    dashboard_service: DashboardService = Depends(get_dashboard_service),
+) -> list[schemas.AUMHistoryPoint]:
     """
-    DEBUG ENDPOINT: Manually trigger portfolio snapshots creation.
-    
-    This is a temporary endpoint for testing the ARQ worker.
-    Only ADMIN users can trigger this action.
-    
-    Returns:
-        Success message with job ID
+    Get AUM history data for charts.
     """
-    # Only allow ADMIN users to trigger this
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=403,
-            detail="Only ADMIN users can trigger manual snapshots"
-        )
-    
     try:
-        job_id = await ARQConfig.enqueue_snapshot_job()
-        return {
-            "message": "Portfolio snapshots job enqueued successfully",
-            "job_id": job_id,
-            "triggered_by": current_user.username
-        }
+        return dashboard_service.get_aum_history(current_user, days)
     except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"Failed to enqueue snapshots job: {str(e)}"
-        ) 
+            status_code=500, detail=f"Failed to get AUM history: {str(e)}"
+        )
