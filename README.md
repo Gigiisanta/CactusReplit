@@ -245,3 +245,17 @@ MIT License - see LICENSE file for details
 ---
 
 **🌵 Growing Your Financial Future with Integrated CRM Excellence** 
+
+## 🚀 Deploy nativo en Replit
+
+1. Crea los secrets requeridos en Replit: `DB_URL`, `JWT_SECRET`, `N8N_WEBHOOK`.
+2. Ejecuta:
+   ```bash
+   ./scripts/cactus.sh setup
+   ./scripts/cactus.sh test
+   ./scripts/cactus.sh deploy
+   ./scripts/cactus.sh report
+   ```
+3. El deploy aborta si falta algún secret crítico.
+4. El log de deploy se encuentra en `deploy-log.txt`.
+5. El webhook `${N8N_WEBHOOK}` recibe el status, git sha y CUs usados tras cada deploy. 

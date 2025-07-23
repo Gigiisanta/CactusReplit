@@ -1,0 +1,2 @@
+run = "./scripts/cactus.sh run"
+deploy = "./scripts/cactus.sh deploy" 
