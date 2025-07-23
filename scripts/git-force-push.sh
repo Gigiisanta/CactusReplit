@@ -17,7 +17,7 @@ git checkout $BRANCH
 
 git pull --rebase $REMOTE $BRANCH
 
-# 2. Crear rama de backup
+# 2. Crear rama de backup solo si hay cambios locales o remotos
 TS=$(date +"%Y%m%d-%H%M%S")
 BACKUP_BRANCH="$BACKUP_PREFIX/$TS"
 git branch $BACKUP_BRANCH
@@ -27,7 +27,7 @@ git push $REMOTE $BACKUP_BRANCH
 # 3. Push normal (no force)
 git push $REMOTE $BRANCH
 
-# 4. Limpiar backups antiguos (dejar solo 2 más recientes)
+# 4. Limpiar backups antiguos (dejar solo 2 más recientes, borra todos los demás)
 BACKUPS=$(git ls-remote --heads $REMOTE "$BACKUP_PREFIX/*" | awk '{print $2}' | sed 's/refs\/heads\///' | sort -r)
 COUNT=0
 for b in $BACKUPS; do
@@ -37,6 +37,5 @@ for b in $BACKUPS; do
   fi
 done
 
-echo "[OK] Backup creado ($BACKUP_BRANCH), main sincronizado, backups antiguos limpiados."
-
+echo "[OK] main actualizado, solo 2 backups recientes conservados, backups extra eliminados."
 echo "\nSi necesitas forzar el push (destructivo), ejecuta: git push $REMOTE $BRANCH --force" 
