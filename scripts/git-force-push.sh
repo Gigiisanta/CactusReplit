@@ -8,14 +8,14 @@ REMOTE=origin
 # 1. Commit de todo
 if [[ -n $(git status --porcelain) ]]; then
   git add .
-  git commit -m "chore(sync): auto-backup before force push [ci skip]"
+  git commit -m "chore(sync): auto-backup before sync [ci skip]" || true
 fi
 
 git fetch $REMOTE
 
 git checkout $BRANCH
 
-git pull $REMOTE $BRANCH --rebase
+git pull --rebase $REMOTE $BRANCH
 
 # 2. Crear rama de backup
 TS=$(date +"%Y%m%d-%H%M%S")
@@ -24,9 +24,8 @@ git branch $BACKUP_BRANCH
 
 git push $REMOTE $BACKUP_BRANCH
 
-# 3. Forzar push de main
-
-git push $REMOTE $BRANCH --force
+# 3. Push normal (no force)
+git push $REMOTE $BRANCH
 
 # 4. Limpiar backups antiguos (dejar solo 2 más recientes)
 BACKUPS=$(git ls-remote --heads $REMOTE "$BACKUP_PREFIX/*" | awk '{print $2}' | sed 's/refs\/heads\///' | sort -r)
@@ -38,4 +37,6 @@ for b in $BACKUPS; do
   fi
 done
 
-echo "[OK] Backup creado ($BACKUP_BRANCH), main forzado, backups antiguos limpiados." 
+echo "[OK] Backup creado ($BACKUP_BRANCH), main sincronizado, backups antiguos limpiados."
+
+echo "\nSi necesitas forzar el push (destructivo), ejecuta: git push $REMOTE $BRANCH --force" 
