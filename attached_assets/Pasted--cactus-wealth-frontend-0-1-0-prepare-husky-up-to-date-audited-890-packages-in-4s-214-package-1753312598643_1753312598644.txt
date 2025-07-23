@@ -1,0 +1,75 @@
+> cactus-wealth-frontend@0.1.0 prepare
+> husky
+
+
+up to date, audited 890 packages in 4s
+
+214 packages are looking for funding
+  run `npm fund` for details
+
+1 high severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+
+> cactus-wealth-frontend@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.4.1
+   - Local:        http://localhost:3000
+   - Network:      http://172.31.95.98:3000
+   - Experiments (use with caution):
+     ✓ optimizeCss
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 2.8s
+ ○ Compiling /dashboard ...
+ ⨯ ./components/layout/TokenExpiryWarning.tsx:5:1
+Module not found: Can't resolve '@/lib/token-utils'
+  3 | import { useEffect, useState } from 'react';
+  4 | import { useAuth } from '@/context/AuthContext';
+> 5 | import { getTokenTimeRemaining } from '@/lib/token-utils';
+    | ^
+  6 | import { Alert, AlertDescription } from '@/components/ui/alert';
+  7 | import { Button } from '@/components/ui/button';
+  8 | import { AlertTriangle, X } from 'lucide-react';
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/ClientRoot.tsx
+ ⨯ ./components/layout/TokenExpiryWarning.tsx:5:1
+Module not found: Can't resolve '@/lib/token-utils'
+  3 | import { useEffect, useState } from 'react';
+  4 | import { useAuth } from '@/context/AuthContext';
+> 5 | import { getTokenTimeRemaining } from '@/lib/token-utils';
+    | ^
+  6 | import { Alert, AlertDescription } from '@/components/ui/alert';
+  7 | import { Button } from '@/components/ui/button';
+  8 | import { AlertTriangle, X } from 'lucide-react';
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/ClientRoot.tsx
+ ⨯ ./components/layout/TokenExpiryWarning.tsx:5:1
+Module not found: Can't resolve '@/lib/token-utils'
+  3 | import { useEffect, useState } from 'react';
+  4 | import { useAuth } from '@/context/AuthContext';
+> 5 | import { getTokenTimeRemaining } from '@/lib/token-utils';
+    | ^
+  6 | import { Alert, AlertDescription } from '@/components/ui/alert';
+  7 | import { Button } from '@/components/ui/button';
+  8 | import { AlertTriangle, X } from 'lucide-react';
+
+https://nextjs.org/docs/messages/module-not-found
+
+Import trace for requested module:
+./components/ClientRoot.tsx
+Time 7ms
+ GET /dashboard 500 in 37274ms
+ ⚠ Cross origin request detected from 7c30b7aa-2e72-4f62-b3c5-7c2ed3906735-00-2g5fo4yeoq0nh.worf.replit.dev to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
