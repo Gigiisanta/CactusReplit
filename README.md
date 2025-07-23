@@ -259,3 +259,18 @@ MIT License - see LICENSE file for details
 3. El deploy aborta si falta algún secret crítico.
 4. El log de deploy se encuentra en `deploy-log.txt`.
 5. El webhook `${N8N_WEBHOOK}` recibe el status, git sha y CUs usados tras cada deploy. 
+
+## Configuración de entorno
+
+1. Copia el archivo `.env.example` a `.env` en la raíz del proyecto:
+   
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Completa los valores reales para cada secreto:
+   - `DB_URL`: [Formato de conexión PostgreSQL](https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING)
+   - `JWT_SECRET`: [¿Qué es JWT?](https://jwt.io/introduction)
+   - `N8N_WEBHOOK`: [Webhooks en n8n](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/)
+
+3. El script `cactus.sh` cargará automáticamente las variables de `.env` si existe. 

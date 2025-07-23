@@ -9,6 +9,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 CACHE_DIR="/home/runner/.cache-cactus"
+if ! mkdir -p "$CACHE_DIR" 2>/dev/null; then
+  CACHE_DIR="$PROJECT_ROOT/.cactus-cache"
+  mkdir -p "$CACHE_DIR"
+fi
 LOG_DIR="$PROJECT_ROOT/logs"
 LOG_FILE="$LOG_DIR/cactus.log"
 DEPLOY_LOG="$PROJECT_ROOT/deploy-log.txt"
@@ -27,6 +31,12 @@ abort_if_missing_secrets() {
     fi
   done
 }
+
+if [ -f "$PROJECT_ROOT/.env" ]; then
+  set -o allexport
+  source "$PROJECT_ROOT/.env"
+  set +o allexport
+fi
 
 mkdir -p "$CACHE_DIR" "$LOG_DIR"
 
@@ -100,20 +110,25 @@ main() {
       "$0" test
       "$0" build
       "$0" db:migrate
-      # Simular deploy: lanzar backend y frontend (ajustar según infra real)
-      cd "$BACKEND_DIR" && nohup uvicorn src.cactus_wealth.main:app --host 0.0.0.0 --port 8000 &
-      cd "$FRONTEND_DIR" && nohup npm run start &
-      sleep 5
-      # Obtener CU usadas (simulado)
-      CU_USED=42
-      GIT_SHA=$(git rev-parse --short HEAD)
-      STATUS=success
-      ENDPOINT_URL="https://$REPL_SLUG.$REPL_OWNER.repl.co"
-      end_time=$(date +%s)
-      duration=$((end_time - start_time))
-      echo "$(date -Iseconds) | CU: $CU_USED | Duration: ${duration}s | Status: $STATUS | SHA: $GIT_SHA | URL: $ENDPOINT_URL" >> "$DEPLOY_LOG"
-      curl -X POST -H "Content-Type: application/json" -d '{"status":"'$STATUS'","sha":"'$GIT_SHA'","cu":'$CU_USED',"url":"'$ENDPOINT_URL'"}' "$N8N_WEBHOOK" || true
-      echo "[DEPLOY] Completado. URL: $ENDPOINT_URL"
+      # Lanzar SOLO el backend como proceso principal para Replit
+      cd "$BACKEND_DIR"
+      # Si quieres servir el frontend estático desde FastAPI, asegúrate de copiar el build al directorio público del backend y descomenta la línea correspondiente en FastAPI.
+      exec uvicorn src.cactus_wealth.main:app --host 0.0.0.0 --port 8000
+      # ---
+      # Si prefieres exponer el frontend, comenta la línea de arriba y descomenta:
+      # cd "$FRONTEND_DIR"
+      # exec npm run start
+      # ---
+      # El logging y webhook pueden moverse a un post-deploy si se requiere:
+      # CU_USED=42
+      # GIT_SHA=$(git rev-parse --short HEAD)
+      # STATUS=success
+      # ENDPOINT_URL="https://$REPL_SLUG.$REPL_OWNER.repl.co"
+      # end_time=$(date +%s)
+      # duration=$((end_time - start_time))
+      # echo "$(date -Iseconds) | CU: $CU_USED | Duration: ${duration}s | Status: $STATUS | SHA: $GIT_SHA | URL: $ENDPOINT_URL" >> "$DEPLOY_LOG"
+      # curl -X POST -H "Content-Type: application/json" -d '{"status":"'$STATUS'","sha":"'$GIT_SHA'","cu":'$CU_USED',"url":"'$ENDPOINT_URL'"}' "$N8N_WEBHOOK" || true
+      # echo "[DEPLOY] Completado. URL: $ENDPOINT_URL"
       ;;
     report)
       echo "[REPORT] Últimos 10 deploys:"
