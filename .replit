@@ -4,7 +4,7 @@ modules = ["nodejs-20", "web", "python-3.12", "bash"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Deploy"
+runButton = "Start"
 
 [[workflows.workflow]]
 name = "Start"
@@ -18,15 +18,6 @@ args = "cd cactus-wealth-frontend && npm install && npm run dev"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd cactus-wealth-backend && pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
-
-[[workflows.workflow]]
-name = "Deploy"
-mode = "sequential"
-author = 41213449
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "  ./scripts/cactus.sh deploy"
 
 [[ports]]
 localPort = 3000
