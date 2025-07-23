@@ -19,6 +19,15 @@ args = "cd cactus-wealth-frontend && npm install && npm run dev"
 task = "shell.exec"
 args = "cd cactus-wealth-backend && pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
 
+[[workflows.workflow]]
+name = "Git"
+mode = "sequential"
+author = 41213449
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "bash scripts/git-force-push.sh"
+
 [[ports]]
 localPort = 3000
 externalPort = 80
