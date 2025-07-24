@@ -7,6 +7,12 @@ A comprehensive wealth management platform built with Next.js frontend and FastA
 - **Primary**: TypeScript/JavaScript (Next.js frontend)
 - **Secondary**: Python (FastAPI backend)
 
+## Project Type
+- **Category**: Full Stack Web Application
+- **Framework**: Next.js + FastAPI
+- **Database**: PostgreSQL
+- **Cache**: Redis
+
 ## Dependencies
 - **Frontend**: Node.js 20, Next.js 15, React 18, Tailwind CSS
 - **Backend**: Python 3.12, FastAPI, SQLModel, PostgreSQL

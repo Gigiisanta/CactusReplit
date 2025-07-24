@@ -3,6 +3,10 @@ modules = ["nodejs-20", "web", "python-3.12", "bash"]
 [nix]
 channel = "stable-24_05"
 
+[env]
+PYTHONPATH = "${REPL_HOME}/cactus-wealth-backend/src"
+NODE_ENV = "development"
+
 [workflows]
 runButton = "Start Full Stack"
 

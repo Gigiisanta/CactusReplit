@@ -1,0 +1,42 @@
+{
+  "name": "cactus-dashboard",
+  "version": "1.0.0",
+  "description": "CactusDashboard - FinTech Wealth Management Platform",
+  "private": true,
+  "workspaces": [
+    "cactus-wealth-frontend"
+  ],
+  "scripts": {
+    "dev": "cd cactus-wealth-frontend && npm run dev",
+    "build": "cd cactus-wealth-frontend && npm run build",
+    "start": "cd cactus-wealth-frontend && npm run start",
+    "test": "cd cactus-wealth-frontend && npm run test",
+    "backend": "cd cactus-wealth-backend && python main.py",
+    "backend:dev": "cd cactus-wealth-backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000",
+    "fullstack": "concurrently \"npm run backend:dev\" \"npm run dev\"",
+    "docker": "docker-compose up --build",
+    "verify": "bash scripts/verify-replit-setup.sh"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gigiisanta/CactusReplit.git"
+  },
+  "keywords": [
+    "fintech",
+    "wealth-management",
+    "dashboard",
+    "nextjs",
+    "fastapi",
+    "typescript",
+    "python"
+  ],
+  "author": "CactusDashboard Team",
+  "license": "MIT"
+} 
