@@ -1,70 +1,31 @@
-from collections.abc import Generator
+"""
+Database configuration and session management
+"""
+
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 from cactus_wealth.core.config import settings
-from sqlmodel import Session, SQLModel, StaticPool, create_engine
-from sqlalchemy.engine import Engine
 
-_engine = None
+# Create database engine
+engine = create_engine(
+    settings.DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-def get_engine(db_url: str = None) -> Engine:
-    global _engine
-    if _engine is not None:
-        return _engine
-    db_url = db_url or settings.DATABASE_URL
-    if "sqlite" in db_url:
-        _engine = create_engine(
-            db_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool,
-        )
-    else:
-        _engine = create_engine(
-            db_url,
-            echo=False,
-            pool_size=20,
-            max_overflow=30,
-            pool_pre_ping=True,
-            pool_recycle=3600,
-            connect_args={
-                "connect_timeout": 10,
-                "application_name": "cactus_wealth_backend",
-            },
-        )
-    return _engine
+# Create base class for models
+Base = declarative_base()
 
 
-def create_tables() -> None:
-    """Create all tables in the database."""
-    # Import models to register them with the cleared metadata
-    # Eliminar: from cactus_wealth.models import (
-    # Eliminar:     Asset,
-    # Eliminar:     Client,
-    # Eliminar:     ClientActivity,
-    # Eliminar:     ClientNote,
-    # Eliminar:     InsurancePolicy,
-    # Eliminar:     InvestmentAccount,
-    # Eliminar:     ModelPortfolio,
-    # Eliminar:     ModelPortfolioPosition,
-    # Eliminar:     Notification,
-    # Eliminar:     Portfolio,
-    # Eliminar:     PortfolioSnapshot,
-    # Eliminar:     Position,
-    # Eliminar:     Report,
-    # Eliminar:     User,
-    # )
-
-    # Create tables
-    SQLModel.metadata.create_all(get_engine())
-
-
-def get_session() -> Generator[Session, None, None]:
-    """Dependency to get database session with proper transaction handling."""
-    session = Session(get_engine(), autoflush=True, autocommit=False)
+def get_session():
+    """Dependency to get database session."""
+    db = SessionLocal()
     try:
-        yield session
-    except Exception:
-        session.rollback()
-        raise
+        yield db
     finally:
-        session.close()
+        db.close()

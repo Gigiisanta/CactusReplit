@@ -4,10 +4,10 @@ modules = ["nodejs-20", "web", "python-3.12", "bash"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Start"
+runButton = "Start Full Stack"
 
 [[workflows.workflow]]
-name = "Start"
+name = "Start Full Stack"
 mode = "parallel"
 author = 41213449
 
@@ -17,10 +17,28 @@ args = "cd cactus-wealth-frontend && npm install && npm run dev"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd cactus-wealth-backend && pip install -r requirements.txt && uvicorn main:app --host 0.0.0.0 --port 8000 --reload"
+args = "cd cactus-wealth-backend && pip install -r requirements.txt && python main.py"
 
 [[workflows.workflow]]
-name = "Git"
+name = "Frontend Only"
+mode = "sequential"
+author = 41213449
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd cactus-wealth-frontend && npm install && npm run dev"
+
+[[workflows.workflow]]
+name = "Backend Only"
+mode = "sequential"
+author = 41213449
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd cactus-wealth-backend && pip install -r requirements.txt && python main.py"
+
+[[workflows.workflow]]
+name = "Git Force Push"
 mode = "sequential"
 author = 41213449
 
@@ -28,6 +46,19 @@ author = 41213449
 task = "shell.exec"
 args = "bash scripts/git-force-push.sh"
 
+[[workflows.workflow]]
+name = "Docker Compose"
+mode = "sequential"
+author = 41213449
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "docker-compose up --build"
+
 [[ports]]
 localPort = 3000
 externalPort = 80
+
+[[ports]]
+localPort = 8000
+externalPort = 8000

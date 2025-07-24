@@ -1,8 +1,6 @@
-# Import client_event_bus to register SQLAlchemy event listeners
-# Import conditionally to avoid table redefinition issues during testing
-import logging
+"""
+CactusDashboard Backend Package
+"""
 
-try:
-    pass
-except Exception as e:
-    logging.warning(f"client_event_bus import failed: {e}")
+__version__ = "1.0.0"
+__author__ = "CactusDashboard Team"
